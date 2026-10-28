@@ -34,12 +34,17 @@ class MainActivity : Activity() {
         statusText = findViewById(R.id.statusText)
         val btnStart: Button = findViewById(R.id.btnStart)
         val btnStop: Button = findViewById(R.id.btnStop)
+        val btnBrightness: Button = findViewById(R.id.btnBrightness)
 
         btnStart.setOnClickListener { startCasting() }
         btnStop.setOnClickListener {
             stopService(Intent(this, CastService::class.java))
-            restoreScreen()
+            setSaveMode(false)
             statusText.text = "已停止投屏"
+        }
+        btnBrightness.setOnClickListener {
+            saveMode = !saveMode
+            setSaveMode(saveMode)
         }
 
         // 接收服务状态回显
@@ -86,7 +91,8 @@ class MainActivity : Activity() {
         if (requestCode == REQ_PROJECTION) {
             if (resultCode == RESULT_OK && data != null) {
                 statusText.text = "正在启动投屏到 ${CastConfig.ip}:${CastConfig.port}…"
-                applyLowBrightness()
+                saveMode = true
+                setSaveMode(true)
                 val intent = Intent(this, CastService::class.java)
                 intent.putExtra("code", resultCode)
                 intent.putExtra("data", data)
@@ -102,34 +108,34 @@ class MainActivity : Activity() {
     }
 
     /**
-     * 投屏期间"最低亮度保屏"：屏幕几乎全黑（省电），但不触发锁屏，
-     * 从而避免安卓15+锁屏自动停止投屏。
+     * 省电模式：投屏时屏幕调到最低亮度（省电、几乎全黑、不锁屏所以投屏不断）；
+     * 关闭则恢复正常亮度，投屏中随时可切换，方便需要操作手机时提亮。
      */
-    private fun applyLowBrightness() {
-        try {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            val attrs = window.attributes
-            attrs.screenBrightness = 0.02f // 接近全黑
-            window.attributes = attrs
-        } catch (e: Exception) {
-            // 忽略
-        }
-    }
+    private var saveMode = false
 
-    /** 投屏结束：恢复系统亮度，去掉防锁屏。 */
-    private fun restoreScreen() {
+    private fun setSaveMode(on: Boolean) {
         try {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            val attrs = window.attributes
-            attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-            window.attributes = attrs
+            val btnBrightness: Button = findViewById(R.id.btnBrightness)
+            if (on) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                val attrs = window.attributes
+                attrs.screenBrightness = 0.02f // 接近全黑
+                window.attributes = attrs
+                btnBrightness.text = "省电模式：开"
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                val attrs = window.attributes
+                attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                window.attributes = attrs
+                btnBrightness.text = "省电模式：关"
+            }
         } catch (e: Exception) {
             // 忽略
         }
     }
 
     override fun onDestroy() {
-        restoreScreen()
+        setSaveMode(false)
         super.onDestroy()
     }
 

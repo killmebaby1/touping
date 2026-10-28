@@ -72,6 +72,13 @@
         android:layout_marginTop="8dp"
         android:text="停止投屏" />
 
+    <Button
+        android:id="@+id/btnBrightness"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="省电模式：关" />
+
     <TextView
         android:id="@+id/statusText"
         android:layout_width="match_parent"
