@@ -12,6 +12,8 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Surface
 import java.io.BufferedInputStream
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -62,11 +64,35 @@ class ReceiverService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** 获取本机局域网 IPv4 地址，用于提示手机该连哪个 IP。 */
+    private fun getLocalIpAddress(): String? {
+        return try {
+            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return null
+            var candidate: String? = null
+            while (interfaces.hasMoreElements()) {
+                val nif = interfaces.nextElement()
+                if (nif.isLoopback) continue
+                val addrs = nif.inetAddresses ?: continue
+                while (addrs.hasMoreElements()) {
+                    val addr = addrs.nextElement()
+                    if (addr is Inet4Address && !addr.isLoopbackAddress) {
+                        candidate = addr.hostAddress
+                    }
+                }
+            }
+            candidate
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun runServer() {
         var server: ServerSocket? = null
         try {
             server = ServerSocket(PORT)
-            StatusBridge.post("监听中 端口 $PORT")
+            val ip = getLocalIpAddress()
+            val show = if (ip != null) "监听中 端口 $PORT\n手机填: ${ip}:$PORT" else "监听中 端口 $PORT"
+            StatusBridge.post(show)
             while (running) {
                 val client: Socket
                 try {
