@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -37,6 +38,7 @@ class MainActivity : Activity() {
         btnStart.setOnClickListener { startCasting() }
         btnStop.setOnClickListener {
             stopService(Intent(this, CastService::class.java))
+            restoreScreen()
             statusText.text = "已停止投屏"
         }
 
@@ -84,6 +86,7 @@ class MainActivity : Activity() {
         if (requestCode == REQ_PROJECTION) {
             if (resultCode == RESULT_OK && data != null) {
                 statusText.text = "正在启动投屏到 ${CastConfig.ip}:${CastConfig.port}…"
+                applyLowBrightness()
                 val intent = Intent(this, CastService::class.java)
                 intent.putExtra("code", resultCode)
                 intent.putExtra("data", data)
@@ -96,6 +99,38 @@ class MainActivity : Activity() {
                 statusText.text = "未获得屏幕采集权限"
             }
         }
+    }
+
+    /**
+     * 投屏期间"最低亮度保屏"：屏幕几乎全黑（省电），但不触发锁屏，
+     * 从而避免安卓15+锁屏自动停止投屏。
+     */
+    private fun applyLowBrightness() {
+        try {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            val attrs = window.attributes
+            attrs.screenBrightness = 0.02f // 接近全黑
+            window.attributes = attrs
+        } catch (e: Exception) {
+            // 忽略
+        }
+    }
+
+    /** 投屏结束：恢复系统亮度，去掉防锁屏。 */
+    private fun restoreScreen() {
+        try {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            val attrs = window.attributes
+            attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            window.attributes = attrs
+        } catch (e: Exception) {
+            // 忽略
+        }
+    }
+
+    override fun onDestroy() {
+        restoreScreen()
+        super.onDestroy()
     }
 
     /** 供 CastService 读取采集授权 */

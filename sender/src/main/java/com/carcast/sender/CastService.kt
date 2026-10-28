@@ -53,12 +53,12 @@ class CastService : Service() {
         super.onDestroy()
     }
 
-    /** 投屏期间保持 CPU 唤醒与屏幕常亮，防止锁屏/黑屏导致投屏中断。 */
+    /** 投屏期间保持 CPU 唤醒（息屏省电但投屏不断）。 */
     private fun acquireWakeLock() {
         try {
             val pm = getSystemService(PowerManager::class.java)
             wakeLock = pm.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                PowerManager.PARTIAL_WAKE_LOCK,
                 "carcast::cast"
             )
             wakeLock?.acquire()
