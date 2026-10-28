@@ -1,0 +1,6 @@
+.gradle
+.idea
+local.properties
+build/
+*.iml
+app/src/main/res/raw/easycontrol_server.jar

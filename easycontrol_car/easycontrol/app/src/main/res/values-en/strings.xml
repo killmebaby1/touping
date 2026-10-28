@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">LynkCast</string>
+
+  <!-- 主页 -->
+  <string name="main_poem">Unregulated driving, loved ones end up in tears.</string>
+  <string name="car_version_message">If you like the car version\nYou can left a star on the car version GitHub repository🙇</string>
+  <string name="main_float_permission">Please grant floating window permission.\nOtherwise, the software functions are incomplete.</string>
+  <string name="main_float_permission_button">Go authorize</string>
+  <string name="main_no_float_mode_button">Always full</string>
+
+  <!-- 配对页面 -->
+  <string name="pair_ip">IP address</string>
+  <string name="pair_ip_hint">IP address of the device to be connected on the same network</string>
+  <string name="pair_pair">Pair</string>
+  <string name="pair_pairing_port_hint">Pairing port</string>
+  <string name="pair_pairing_code_hint">Pairing code</string>
+  <string name="pair_open_port">Open port 5555</string>
+  <string name="pair_debug_port_hint">Debug port</string>
+  <string name="pair_run">Run</string>
+  <string name="pair_cert">Pairing certificate</string>
+  <string name="pair_generating_cert">Pairing certificate generating</string>
+  <string name="pair_no_cert">No Pairing Certificate, please try regenerate</string>
+  <string name="pair_cert_regenerate">Regenerate</string>
+  <string name="pair_success"> success</string>
+  <string name="pair_failed"> failed</string>
+
+  <!-- 设置页面 -->
+  <string name="set_default">Default settings</string>
+  <string name="set_display">Display</string>
+  <string name="set_wake_up_screen_on_connect">Wake up after connection</string>
+  <string name="set_wake_up_screen_on_connect_detail">Automatically wake up the controlled end after the connection is successful</string>
+  <string name="set_light_off_on_connect">Turn off backlight after connection</string>
+  <string name="set_light_off_on_connect_detail">Turn off the screen backlight two seconds after the connection is successful (need to turn on \u0022Wake up after connection\u0022)</string>
+  <string name="set_light_off_on_connect_error">Please turn on \u0022Wake up after connection\u0022</string>
+  <string name="set_lock_screen_on_close">Lock the screen after disconnection</string>
+  <string name="set_lock_screen_on_close_detail">Automatically lock the controlled end screen after the connection is disconnected</string>
+  <string name="set_light_on_on_close">Restore backlight after disconnection</string>
+  <string name="set_light_on_on_close_detail">Restore the screen backlight after the connection is disconnected (need to turn off \u0022Lock screen after disconnection\u0022)</string>
+  <string name="set_light_on_on_close_error">Please turn off \u0022Lock the screen after disconnection\u0022</string>
+  <string name="set_display_keep_screen_awake">Keep the controlled end awake</string>
+  <string name="set_display_keep_screen_awake_detail">The controlled end does not lock during the connection process</string>
+  <string name="set_display_auto_back_on_start_default">Return to launcher after a connection</string>
+  <string name="set_display_auto_back_on_start_default_detail">Return to launcher automatically when default device connected</string>
+  <string name="set_display_default_show_nav_bar">Show navigation bar by default</string>
+  <string name="set_display_default_show_nav_bar_detail">Sets whether the navigation bar is displayed by default in small window and full screen modes</string>
+  <string name="set_display_default_mini_on_outside">Minimize when touching outside the small window</string>
+  <string name="set_display_default_mini_on_outside_detail">(Small window mode) Minimized when touching outside the small window</string>
+  <string name="set_display_mini_recover_on_timeout">Floating window auto minimize</string>
+  <string name="set_display_mini_recover_on_timeout_detail">Touch outside of floating window to minimize it</string>
+  <string name="set_display_full_to_mini_on_exit">Fullscreen auto minimize</string>
+  <string name="set_display_full_to_mini_on_exit_detail">When fullscreen not manually exits, auto minimize it (Auto mini to floating window when close)</string>
+  <string name="set_display_full_fill">Stretch and fill in Fullscreen mode</string>
+  <string name="set_display_full_fill_detail">Stretch the image to fill all available areas in full-screen mode (Note: No stretching if the aspect ratio difference is too large)</string>
+  <string name="set_other">Other</string>
+  <string name="set_audio_channel">Audio output channel</string>
+  <string name="set_audio_channel_detail">Please keep 0 if there is no special need</string>
+  <string name="set_enable_usb">Enable USB detection</string>
+  <string name="set_enable_usb_detail">If you do not want to connect via USB, you can turn this off</string>
+  <string name="set_set_full_screen">Immersive full screen mode</string>
+  <string name="set_set_full_screen_detail">If you do not want the native navigation bar to disappear when in full screen mode, you can turn this off</string>
+  <string name="set_always_full_mode">Always full screen mode</string>
+  <string name="set_always_full_mode_detail">Always connect to the device in full screen mode, ignoring \u0022Default full screen\u0022 settings in the device (Only one default device can be opened when the software starts)</string>
+  <string name="set_mirror_mode">Android 14 compatibility mode</string>
+  <string name="set_mirror_mode_detail">If display issues occur on Android 14 and above, try enabling this option</string>
+  <string name="set_force_desktop_mode">Force desktop mode when using application transfer</string>
+  <string name="set_force_desktop_mode_detail">Input method can be synchronized during application transfer (Not recommended to enable, this desktop mode is not Samsung dex mode or similar function)</string>
+  <string name="set_try_start_default_in_app_transfer">Try application transfer when opening default device</string>
+  <string name="set_try_start_default_in_app_transfer_detail">Try application transfer when opening default device (Note: When the device specifies the package name, the application transfer is automatically attempted without turning on this)</string>
+  <string name="set_reconnect">Show reconnect dialog</string>
+  <string name="set_reconnect_detail">Display a dialog to attempt reconnection when the device is unexpectedly disconnected</string>
+  <string name="set_connect_usb">Show connect to default USB device dialog</string>
+  <string name="set_connect_usb_detail">Display the automatic connection dialog when the default USB device is detected; if disabled, connect automatically (APP must be on the main page)</string>
+  <string name="set_auto_countdown">Automatic task waiting time (seconds)</string>
+  <string name="set_auto_countdown_detail">Waiting time before automatic reconnection after device disconnection or before connecting to default USB device</string>
+  <string name="set_no_auto_countdown">Do not auto confirm</string>
+  <string name="set_other_custom_key">Custom key (ADB reauthorization required)</string>
+  <string name="set_other_clear_key">Regenerate the key (ADB reauthorization required)</string>
+  <string name="set_other_clear_key_code">Regenerated</string>
+  <string name="set_other_locale">Change language(中文/English)</string>
+  <string name="set_other_locale_code">已切换，可能需要重启APP</string>
+  <string name="set_app_monitor">App monitor (experimental)</string>
+  <string name="set_app_monitor_detail">It can minimize all windows when opening surrounding image and restore them when closing</string>
+  <string name="set_create_startup_shortcut">Create default device shortcut</string>
+  <string name="set_other_log">View log</string>
+  <string name="set_about">About</string>
+  <string name="set_about_ip">View local IP and scan device</string>
+  <string name="set_about_website">Website</string>
+  <string name="set_about_how_to_use">Instructions for use</string>
+  <string name="set_about_privacy">Privacy Policy</string>
+  <string name="set_license">License</string>
+  <string name="set_about_version">Version: </string>
+
+  <!-- 查看IP地址页面 -->
+  <string name="ip_title">Local Address</string>
+  <string name="ip_ipv4">IPv4(Click to copy)</string>
+  <string name="ip_ipv6">IPv6(Click to copy)</string>
+  <string name="ip_copy">Copied</string>
+  <string name="ip_scan_device_title">Scan device</string>
+  <string name="ip_scanning_device">Scanning…</string>
+  <string name="ip_scan_finish_copy">Scan finished(Click to copy)</string>
+  <string name="ip_scan_finish_none">Scan finished(No device)</string>
+
+  <!-- 360监测页面 -->
+  <string name="monitor_title">App monitor (experimental)</string>
+  <string name="monitor_permission_request">Click to grant permission for usage statistics</string>
+  <string name="monitor_enable">Enable monitor</string>
+  <string name="monitor_latency">Monitor latency (ms)</string>
+  <string name="monitor_latency_detail">The smaller the size, the faster the detection, but it may also cause lag</string>
+  <string name="monitor_android_version_not_support">The current Android version does not support</string>
+  <string name="monitor_capture_event">Capture event</string>
+  <string name="monitor_no_permission">Please grant permission first</string>
+  <string name="monitor_no_event">Please capture event first</string>
+  <string name="monitor_capture_event_start">Click to start capture event</string>
+  <string name="monitor_capture_event_stop">Please trigger the app, click to stop capture event</string>
+  <string name="monitor_show_event">Related events (If no events, capture first)</string>
+  <string name="monitor_add_event">Add current event to</string>
+  <string name="monitor_add_change_to_mini_event">trigger to collapse</string>
+  <string name="monitor_add_change_to_small_event">trigger to recover</string>
+  <string name="monitor_change_to_mini_event">trigger to collapse (click to delete)</string>
+  <string name="monitor_change_to_small_event">trigger to recover (click to delete)</string>
+
+  <!-- 查看日志页面 -->
+  <string name="log_title">Log</string>
+  <string name="log_other_devices">Other devices</string>
+  <string name="log_notify">An error occurred on a device, please check the log</string>
+
+  <!-- 查看密钥页面 -->
+  <string name="adb_key_pub">Public key (Base64 encoded)</string>
+  <string name="adb_key_pri">Private key (Base64 encoded)</string>
+  <string name="adb_key_button">Save</string>
+  <string name="adb_key_button_code">Saved</string>
+
+  <!-- 设备添加模块 -->
+  <string name="add_device_name">Name</string>
+  <string name="add_device_name_hint">Non-null</string>
+  <string name="add_device_address">Address:Port</string>
+  <string name="add_device_address_hint">IPv4/v6 addresses or domain</string>
+  <string name="add_device_specify_app">Transfer specified application (package name)</string>
+  <string name="add_device_specify_app_hint">Leave blank for recently-used app transfer</string>
+  <string name="add_device_scan">Scan</string>
+  <string name="add_device_scanning">Scanning…</string>
+  <string name="add_device_scan_finish">Scan finished</string>
+  <string name="add_device_scan_address_finish_none">Scan finished(No device)</string>
+  <string name="add_device_scan_specify_app_finish_error">Scan error, please check if the device can be connected</string>
+  <string name="add_device_option">Advanced options</string>
+  <string name="add_device_button">OK</string>
+
+  <!-- 设备设置模块 -->
+  <string name="set_device_title">Do what◔ ‸◔?</string>
+  <string name="set_device_button_night_mode">Dark mode</string>
+  <string name="night_mode_auto">Auto</string>
+  <string name="night_mode_current">Current dark mode: </string>
+  <string name="night_mode_custom">Custom</string>
+  <string name="night_mode_yes">Open</string>
+  <string name="night_mode_no">Close</string>
+  <string name="change_night_mode_success">Request success</string>
+  <string name="change_night_mode_failed">Request failed</string>
+  <string name="set_device_button_recover_error">Connection failed, please check ADB and network</string>
+  <string name="set_device_button_get_uuid">Copy ID</string>
+  <string name="set_device_button_get_uuid_success">Copied</string>
+  <string name="set_device_button_create_shortcut">Create shortcut</string>
+  <string name="set_device_button_start_wireless">Enable wireless</string>
+  <string name="set_device_button_start_wireless_success">Successfully</string>
+  <string name="set_device_button_change">Settings</string>
+  <string name="set_device_button_delete">Delete</string>
+
+  <!-- 加载中模块 -->
+  <string name="loading_text">Loading</string>
+
+  <!-- 错误提示 -->
+  <string name="error_no_browser">No default browser</string>
+  <string name="error_address_error">Address format error</string>
+  <string name="error_refused_back">Fullscreen mode intercepts return key event</string>
+  <string name="error_connect_server">Failed to connect</string>
+  <string name="error_stream_closed">Disconnected</string>
+  <string name="error_create_display">The controlled end does not support application transfer (requires Android 11 and above)</string>
+  <string name="error_transfer_app_failed">application transfer failed, screen mirroring has been started</string>
+  <string name="error_app_not_found">The specified package name application does not exist</string>
+  <string name="error_device_not_found">Device not found</string>
+  <string name="error_default_device_not_found">Default device not found</string>
+  <string name="error_mode_not_support">Not supported in always full screen mode</string>
+
+  <!-- 提示 -->
+  <string name="tip_application_transfer">Application transfer is an experimental feature, and some mobile phone systems do not support it</string>
+  <string name="tip_default_device">Default device</string>
+  <string name="tip_reconnect">Device disconnected abnormally. Reconnect?</string>
+  <string name="tip_default_usb">Default USB device detected. Connect?</string>
+  <string name="confirm">Confirm</string>
+  <string name="cancel">Cancel</string>
+
+  <!-- 设备参数设置及注释说明 -->
+  <string name="option_startup_device">Open when software starts</string>
+  <string name="option_startup_device_detail">Automatically connect to this device when the software starts</string>
+  <string name="option_default_usb_device">Default USB device</string>
+  <string name="option_default_usb_device_detail">Automatically connect when the software starts or this wired device is detected</string>
+  <string name="option_is_audio">Enable audio</string>
+  <string name="option_is_audio_detail">Works with Android 12 and above</string>
+  <string name="option_clipboard_sync">Clipboard sync</string>
+  <string name="option_clipboard_sync_detail">Synchronize clipboard between devices</string>
+  <string name="option_night_mode_sync">Dark mode sync</string>
+  <string name="option_night_mode_sync_detail">Synchronize dark mode between devices</string>
+  <string name="option_max_size">Resolution</string>
+  <string name="option_max_size_detail">Set max resolution</string>
+  <string name="option_max_size_original">Original resolution</string>
+  <string name="option_max_fps">Max FPS</string>
+  <string name="option_max_fps_detail">Frame per seconds</string>
+  <string name="option_max_video_bit">Max Video Bit</string>
+  <string name="option_max_video_bit_detail">Set stream bitrate. Suggested = 4</string>
+  <string name="option_use_h265">Use H265</string>
+  <string name="option_use_h265_detail">Enable H265 when available, disable it when encountered display issues</string>
+  <string name="option_use_opus">Use Opus</string>
+  <string name="option_use_opus_detail">Enable Opus when available</string>
+  <string name="option_default_full">Default full screen</string>
+  <string name="option_default_full_detail">Automatically enter full screen after connection</string>
+  <string name="option_set_resolution">Application transfer aspect ratio free scaling</string>
+  <string name="option_set_resolution_detail">Application transfer aspect ratio can be freely set</string>
+
+  <!-- 设备列表展开 -->
+  <string name="start_display_mirroring">Display mirroring</string>
+  <string name="start_application_transfer">Application transfer</string>
+
+</resources>

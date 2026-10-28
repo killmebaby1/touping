@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">领克投屏</string>
+
+  <!-- 主页 -->
+  <string name="main_poem">行车不规范，亲人两行泪</string>
+  <string name="car_version_message">如果你喜欢车机版的话\n可以在车机版Github仓库上Star哦🙇</string>
+  <string name="main_float_permission">请授予悬浮窗权限\n否则软件功能不完整</string>
+  <string name="main_float_permission_button">前往授权悬浮</string>
+  <string name="main_no_float_mode_button">始终全屏模式</string>
+
+  <!-- 配对页面 -->
+  <string name="pair_ip">IP地址</string>
+  <string name="pair_ip_hint">同一网络下待连接设备的IP地址</string>
+  <string name="pair_pair">配对</string>
+  <string name="pair_pairing_port_hint">配对端口</string>
+  <string name="pair_pairing_code_hint">配对码</string>
+  <string name="pair_open_port">打开5555端口</string>
+  <string name="pair_debug_port_hint">调试端口</string>
+  <string name="pair_run">运行</string>
+  <string name="pair_cert">配对证书</string>
+  <string name="pair_generating_cert">配对证书生成中</string>
+  <string name="pair_no_cert">无配对证书，请尝试重置</string>
+  <string name="pair_cert_regenerate">重置</string>
+  <string name="pair_success">成功</string>
+  <string name="pair_failed">失败</string>
+
+  <!-- 设置页面 -->
+  <string name="set_default">默认参数</string>
+  <string name="set_display">显示</string>
+  <string name="set_wake_up_screen_on_connect">连接后自动唤醒</string>
+  <string name="set_wake_up_screen_on_connect_detail">连接成功后自动唤醒被控端</string>
+  <string name="set_light_off_on_connect">连接后关闭背光</string>
+  <string name="set_light_off_on_connect_detail">连接成功两秒后关闭屏幕背光(需开启\u0022连接后唤醒\u0022)</string>
+  <string name="set_light_off_on_connect_error">请先开启“连接后自动唤醒”哦</string>
+  <string name="set_lock_screen_on_close">断开后自动锁定</string>
+  <string name="set_lock_screen_on_close_detail">断开连接后自动锁定被控端屏幕</string>
+  <string name="set_light_on_on_close">断开后恢复背光</string>
+  <string name="set_light_on_on_close_detail">断开连接后恢复屏幕背光(需关闭\u0022断开后自动锁定\u0022)</string>
+  <string name="set_light_on_on_close_error">请先关闭“断开后自动锁定”哦</string>
+  <string name="set_display_keep_screen_awake">被控端保持唤醒</string>
+  <string name="set_display_keep_screen_awake_detail">连接过程中被控端不锁定(即修改自动锁定时间)</string>
+  <string name="set_display_auto_back_on_start_default">打开默认后返回</string>
+  <string name="set_display_auto_back_on_start_default_detail">启动时打开默认后是否自动返回桌面</string>
+  <string name="set_display_default_show_nav_bar">默认显示导航栏</string>
+  <string name="set_display_default_show_nav_bar_detail">设置小窗和全屏模式默认是否显示导航栏</string>
+  <string name="set_display_default_mini_on_outside">触摸外界时挂起</string>
+  <string name="set_display_default_mini_on_outside_detail">(小窗模式)触摸小窗以外位置时自动最小化</string>
+  <string name="set_display_mini_recover_on_timeout">挂起后自动恢复</string>
+  <string name="set_display_mini_recover_on_timeout_detail">在触发自动最小化后五秒内无操作自动恢复为原模式</string>
+  <string name="set_display_full_to_mini_on_exit">全屏意外退出时挂起</string>
+  <string name="set_display_full_to_mini_on_exit_detail">在全屏模式下意外退出时自动最小化(关闭时为自动小窗)</string>
+  <string name="set_display_full_fill">全屏模式拉伸填充画面</string>
+  <string name="set_display_full_fill_detail">在全屏模式下画面拉伸并填充所有可用区域(注：比例相差过大时不拉伸)</string>
+  <string name="set_other">其他</string>
+  <string name="set_audio_channel">音频输出声道</string>
+  <string name="set_audio_channel_detail">没有特殊需要请保持0声道</string>
+  <string name="set_enable_usb">启用USB设备检测</string>
+  <string name="set_enable_usb_detail">若不希望使用有线连接，可关闭</string>
+  <string name="set_set_full_screen">沉浸式全屏模式</string>
+  <string name="set_set_full_screen_detail">若不希望全屏模式时本机导航栏消失，可关闭</string>
+  <string name="set_always_full_mode">始终全屏模式</string>
+  <string name="set_always_full_mode_detail">始终以全屏模式连接设备，忽略在设备内设置的全屏启动(\u0022软件启动时打开\u0022仅支持打开一个默认设备)</string>
+  <string name="set_mirror_mode">安卓14兼容模式</string>
+  <string name="set_mirror_mode_detail">安卓14及以上系统若出现画面异常可尝试开启此选项</string>
+  <string name="set_force_desktop_mode">应用流转时强制桌面模式</string>
+  <string name="set_force_desktop_mode_detail">开启后输入法可同步流转(不建议开启此功能，此桌面模式非三星dex模式或类似功能)</string>
+  <string name="set_try_start_default_in_app_transfer">打开默认设备时尝试应用流转</string>
+  <string name="set_try_start_default_in_app_transfer_detail">打开默认设备时尝试应用流转(注: 设备指定包名后通过快捷方式启动时自动尝试应用流转无需打开此开关)</string>
+  <string name="set_reconnect">显示重连对话框</string>
+  <string name="set_reconnect_detail">设备异常断开时显示重连对话框</string>
+  <string name="set_connect_usb">显示连接默认USB设备对话框</string>
+  <string name="set_connect_usb_detail">检测到默认USB设备显示自动连接对话框，关闭则自动连接(软件需处于主页面)</string>
+  <string name="set_auto_countdown">自动任务等待时长 (秒)</string>
+  <string name="set_auto_countdown_detail">设备异常断开时自动重连前或默认USB设备连接前等待时长</string>
+  <string name="set_no_auto_countdown">不自动确认</string>
+  <string name="set_other_custom_key">自定义密钥(需重新授权)</string>
+  <string name="set_other_clear_key">重新生成密钥(需重新授权)</string>
+  <string name="set_other_clear_key_code">已刷新</string>
+  <string name="set_other_locale">语言切换(中文/English)</string>
+  <string name="set_other_locale_code">OK, you may need to restart the APP</string>
+  <string name="set_app_monitor">软件监测(实验性)</string>
+  <string name="set_app_monitor_detail">可实现打开360影像时全部最小化、关闭时恢复，详情见使用说明</string>
+  <string name="set_create_startup_shortcut">创建默认设备快捷方式</string>
+  <string name="set_other_log">查看日志</string>
+  <string name="set_about">关于</string>
+  <string name="set_about_ip">查看本机IP及扫描设备</string>
+  <string name="set_about_website">项目主页</string>
+  <string name="set_about_how_to_use">使用说明</string>
+  <string name="set_about_privacy">隐私政策</string>
+  <string name="set_license">开源证书</string>
+  <string name="set_about_version">版本: </string>
+
+  <!-- 查看IP地址页面 -->
+  <string name="ip_title">本机地址</string>
+  <string name="ip_ipv4">IPv4(点击复制)</string>
+  <string name="ip_ipv6">IPv6(点击复制)</string>
+  <string name="ip_copy">已复制</string>
+  <string name="ip_scan_device_title">扫描设备</string>
+  <string name="ip_scanning_device">扫描中…</string>
+  <string name="ip_scan_finish_copy">扫描完成(点击复制)</string>
+  <string name="ip_scan_finish_none">扫描完成(无设备)</string>
+
+  <!-- 360监测页面 -->
+  <string name="monitor_title">软件监测(实验性)</string>
+  <string name="monitor_permission_request">点此授予使用统计权限</string>
+  <string name="monitor_enable">启用检测</string>
+  <string name="monitor_latency">监测间隔(毫秒)</string>
+  <string name="monitor_latency_detail">越小检测越快，但也可能导致卡顿</string>
+  <string name="monitor_android_version_not_support">当前安卓版本不支持</string>
+  <string name="monitor_capture_event">捕获事件</string>
+  <string name="monitor_no_permission">请先授予使用统计权限</string>
+  <string name="monitor_no_event">请先捕获事件</string>
+  <string name="monitor_capture_event_start">点击开始捕获</string>
+  <string name="monitor_capture_event_stop">请触发软件，点击结束捕获</string>
+  <string name="monitor_show_event">相关事件(若无事件请先捕获)</string>
+  <string name="monitor_add_event">添加当前事件到</string>
+  <string name="monitor_add_change_to_mini_event">触发收起</string>
+  <string name="monitor_add_change_to_small_event">触发还原</string>
+  <string name="monitor_change_to_mini_event">触发收起(点击删除)</string>
+  <string name="monitor_change_to_small_event">触发还原(点击删除)</string>
+
+  <!-- 查看日志页面 -->
+  <string name="log_title">日志</string>
+  <string name="log_other_devices">其他设备</string>
+  <string name="log_notify">某个设备出现错误，请查看日志</string>
+
+  <!-- 查看密钥页面 -->
+  <string name="adb_key_pub">公钥(Base64编码)</string>
+  <string name="adb_key_pri">私钥(Base64编码)</string>
+  <string name="adb_key_button">保存</string>
+  <string name="adb_key_button_code">已保存</string>
+
+  <!-- 设备添加模块 -->
+  <string name="add_device_name">设备名称</string>
+  <string name="add_device_name_hint">不可为空</string>
+  <string name="add_device_address">地址:端口号</string>
+  <string name="add_device_address_hint">支持IPv4/v6地址、域名</string>
+  <string name="add_device_specify_app">流转指定包名的应用</string>
+  <string name="add_device_specify_app_hint">留空则为对最近使用的应用流转</string>
+  <string name="add_device_scan">扫描</string>
+  <string name="add_device_scanning">扫描中…</string>
+  <string name="add_device_scan_finish">扫描完成</string>
+  <string name="add_device_scan_address_finish_none">扫描完成(无设备)</string>
+  <string name="add_device_scan_specify_app_finish_error">扫描出错，请检查设备是否可连接</string>
+  <string name="add_device_option">高级选项</string>
+  <string name="add_device_button">确认</string>
+
+  <!-- 设备设置模块 -->
+  <string name="set_device_title">干什么◔ ‸◔?</string>
+  <string name="set_device_button_night_mode">黑暗模式</string>
+  <string name="night_mode_current">当前黑暗模式: </string>
+  <string name="night_mode_auto">自动</string>
+  <string name="night_mode_custom">自定义</string>
+  <string name="night_mode_yes">开启</string>
+  <string name="night_mode_no">关闭</string>
+  <string name="change_night_mode_success">请求成功</string>
+  <string name="change_night_mode_failed">请求失败</string>
+  <string name="set_device_button_recover_error">连接失败，请检查ADB和网络</string>
+  <string name="set_device_button_get_uuid">获取ID</string>
+  <string name="set_device_button_get_uuid_success">已复制</string>
+  <string name="set_device_button_create_shortcut">创建快捷方式</string>
+  <string name="set_device_button_start_wireless">打开无线</string>
+  <string name="set_device_button_start_wireless_success">成功</string>
+  <string name="set_device_button_change">修改</string>
+  <string name="set_device_button_delete">删除</string>
+
+  <!-- 加载中模块 -->
+  <string name="loading_text">加加加加载中</string>
+
+  <!-- 错误提示 -->
+  <string name="error_no_browser">没有默认浏览器</string>
+  <string name="error_address_error">地址格式错误</string>
+  <string name="error_refused_back">全屏状态会拦截返回</string>
+  <string name="error_connect_server">连接被控端失败</string>
+  <string name="error_stream_closed">连接断开</string>
+  <string name="error_create_display">被控端不支持应用流转(需安卓11及以上)</string>
+  <string name="error_transfer_app_failed">应用流转失败，屏幕镜像已启动</string>
+  <string name="error_app_not_found">指定包名的应用不存在</string>
+  <string name="error_device_not_found">未找到该设备</string>
+  <string name="error_default_device_not_found">未找到默认设备</string>
+  <string name="error_mode_not_support">始终全屏模式不支持</string>
+
+  <!-- 提示 -->
+  <string name="tip_application_transfer">应用流转为实验性功能，部分手机系统可能不支持</string>
+  <string name="tip_default_device">默认设备</string>
+  <string name="tip_reconnect">设备异常断开，是否重新连接？</string>
+  <string name="tip_default_usb">检测到默认USB设备，是否连接？</string>
+  <string name="confirm">确认</string>
+  <string name="cancel">取消</string>
+
+  <!-- 设备参数设置及注释说明 -->
+  <string name="option_startup_device">软件启动时打开</string>
+  <string name="option_startup_device_detail">软件启动时自动连接此设备</string>
+  <string name="option_default_usb_device">默认USB设备</string>
+  <string name="option_default_usb_device_detail">软件启动或检测到此有线设备时自动连接</string>
+  <string name="option_is_audio">传输音频</string>
+  <string name="option_is_audio_detail">开启后将尝试传输音频，被控端需要安卓12或以上</string>
+  <string name="option_clipboard_sync">剪贴板同步</string>
+  <string name="option_clipboard_sync_detail">同步主控端和被控端的剪贴板</string>
+  <string name="option_night_mode_sync">黑暗模式同步</string>
+  <string name="option_night_mode_sync_detail">同步主控端和被控端的黑暗模式</string>
+  <string name="option_max_size">最大大小</string>
+  <string name="option_max_size_detail">设置画面长和宽的最大大小</string>
+  <string name="option_max_size_original">原始分辨率</string>
+  <string name="option_max_fps">最大帧率</string>
+  <string name="option_max_fps_detail">最大帧率限制，值越低画面越卡顿</string>
+  <string name="option_max_video_bit">最大码率</string>
+  <string name="option_max_video_bit_detail">码率越大视频损失越小体积越大，建议设置为4</string>
+  <string name="option_use_h265">优先H265</string>
+  <string name="option_use_h265_detail">优先使用H265，实际以支持情况为主，若视频异常可尝试关闭</string>
+  <string name="option_use_opus">优先Opus</string>
+  <string name="option_use_opus_detail">优先使用OPUS，实际以支持情况为主</string>
+  <string name="option_default_full">全屏启动</string>
+  <string name="option_default_full_detail">开启后在连接成功后直接进入全屏状态</string>
+  <string name="option_set_resolution">应用流转宽高比例自由缩放</string>
+  <string name="option_set_resolution_detail">开启后应用流转宽高比例可自由设置</string>
+
+  <!-- 设备列表展开 -->
+  <string name="start_display_mirroring">屏幕镜像</string>
+  <string name="start_application_transfer">应用流转</string>
+
+</resources>
