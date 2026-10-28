@@ -15,6 +15,7 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import java.io.BufferedOutputStream
 import java.net.Socket
 
@@ -38,10 +39,40 @@ class CastService : Service() {
     private var workThread: Thread? = null
     private var out: BufferedOutputStream? = null
     private var socket: Socket? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        acquireWakeLock()
+    }
+
+    override fun onDestroy() {
+        releaseWakeLock()
+        releaseAll()
+        super.onDestroy()
+    }
+
+    /** 投屏期间保持 CPU 唤醒与屏幕常亮，防止锁屏/黑屏导致投屏中断。 */
+    private fun acquireWakeLock() {
+        try {
+            val pm = getSystemService(PowerManager::class.java)
+            wakeLock = pm.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "carcast::cast"
+            )
+            wakeLock?.acquire()
+        } catch (e: Exception) {
+            // 权限/低版本受限，忽略
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } catch (_: Exception) {
+        }
+        wakeLock = null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -70,11 +101,6 @@ class CastService : Service() {
             val ip = MainActivity.CastConfig.ip
             val port = MainActivity.CastConfig.port
 
-            // 连接车机接收端
-            socket = Socket(ip, port)
-            socket?.tcpNoDelay = true
-            out = BufferedOutputStream(socket!!.getOutputStream(), 64 * 1024)
-
             // H.264 编码器
             val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height)
             format.setInteger(
@@ -100,36 +126,53 @@ class CastService : Service() {
             codec!!.start()
             postStatus("投屏中 ${width}×${height}")
 
-            val info = MediaCodec.BufferInfo()
-            val outBuf = ByteArray(64 * 1024)
+            // 断线自动重连：黑屏/网络抖动导致 socket 断开时，自动重连继续投屏，不退出
             while (running) {
-                val index = codec!!.dequeueOutputBuffer(info, 10_000)
-                when {
-                    index >= 0 -> {
-                        val byteBuffer = codec!!.getOutputBuffer(index) ?: continue
-                        byteBuffer.position(info.offset)
-                        byteBuffer.limit(info.offset + info.size)
-                        val size = info.size
-                        if (size > 0) {
-                            var read = 0
-                            while (read < size) {
-                                val chunk = minOf(size - read, outBuf.size)
-                                byteBuffer.get(outBuf, 0, chunk)
-                                out?.write(outBuf, 0, chunk)
-                                read += chunk
+                try {
+                    // 连接车机接收端
+                    socket = Socket(ip, port)
+                    socket?.tcpNoDelay = true
+                    out = BufferedOutputStream(socket!!.getOutputStream(), 64 * 1024)
+                    postStatus("已连接车机 ${ip}:${port}")
+
+                    val info = MediaCodec.BufferInfo()
+                    val outBuf = ByteArray(64 * 1024)
+                    while (running) {
+                        val index = codec!!.dequeueOutputBuffer(info, 10_000)
+                        when {
+                            index >= 0 -> {
+                                val byteBuffer = codec!!.getOutputBuffer(index) ?: continue
+                                byteBuffer.position(info.offset)
+                                byteBuffer.limit(info.offset + info.size)
+                                val size = info.size
+                                if (size > 0) {
+                                    var read = 0
+                                    while (read < size) {
+                                        val chunk = minOf(size - read, outBuf.size)
+                                        byteBuffer.get(outBuf, 0, chunk)
+                                        out?.write(outBuf, 0, chunk)
+                                        read += chunk
+                                    }
+                                    out?.flush()
+                                }
+                                codec!!.releaseOutputBuffer(index, false)
+                                if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break
                             }
-                            out?.flush()
+                            index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                                // 可忽略，config 数据已随流发出
+                            }
                         }
-                        codec!!.releaseOutputBuffer(index, false)
-                        // 首帧后隐藏
-                        if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                            // config 数据随流发送即可
-                        }
-                        if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break
                     }
-                    index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        // 可忽略，config 数据已随流发出
-                    }
+                } catch (e: Exception) {
+                    // 断开连接：关闭 socket，短暂等待后自动重连
+                    try { out?.flush() } catch (_: Exception) {}
+                    try { out?.close() } catch (_: Exception) {}
+                    try { socket?.close() } catch (_: Exception) {}
+                    out = null
+                    socket = null
+                    if (!running) break
+                    postStatus("连接中断，自动重连中…")
+                    try { Thread.sleep(1000) } catch (_: Exception) {}
                 }
             }
         } catch (e: Exception) {
@@ -159,11 +202,6 @@ class CastService : Service() {
 
     private fun postStatus(text: String) {
         StatusRelay.post(text)
-    }
-
-    override fun onDestroy() {
-        releaseAll()
-        super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
