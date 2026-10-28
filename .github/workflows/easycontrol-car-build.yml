@@ -20,6 +20,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :server:assembleRelease --no-daemon --stacktrace
           ls -la server/build/outputs/apk/release/
+          mkdir -p app/src/main/res/raw
           cp server/build/outputs/apk/release/server-release*.apk app/src/main/res/raw/easycontrol_server.jar
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
       - name: 上传 APK 产物
