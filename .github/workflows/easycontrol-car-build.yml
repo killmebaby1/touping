@@ -18,7 +18,9 @@ jobs:
         working-directory: ./easycontrol_car/easycontrol
         run: |
           chmod +x gradlew
-          ./gradlew :server:copyRelease :app:assembleDebug --no-daemon --stacktrace
+          ./gradlew :server:copyRelease --no-daemon --stacktrace
+          ls -la app/src/main/res/raw/
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4
         with:
