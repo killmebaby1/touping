@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">车机投屏接收</string>
+    <string name="waiting">等待手机连接…</string>
+    <string name="port_hint">端口 2026</string>
+</resources>
