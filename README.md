@@ -1,42 +1,38 @@
-# 车机投屏（双端）
+# 领克投屏（车机端）
 
-免费、开源的安卓手机 → 安卓车机无线投屏。手机用自研发送端采集屏幕、H.264 硬编后经 TCP 推给车机；车机接收端硬解并**强制全屏（1920×1080）**显示。
+基于开源项目 **Easycontrol_For_Car**（易控车机版，GPL-3.0）深度定制，适配 **领克09 / OSN 2.0 安卓9 车机** 的无线投屏方案。
 
-## 两个 App
+## 核心能力
 
-| 模块 | 包名 | 装在哪 | 作用 |
-|---|---|---|---|
-| `receiver` | `com.carcast.receiver` | 车机 | TCP 服务端，MediaCodec 硬解 H.264，全屏显示，开机自启 |
-| `sender` | `com.carcast.sender` | 手机 | MediaProjection 采集 + H.264 硬编 + TCP 推流 |
+- **手机 → 车机无线投屏**（车机端为主控，通过内置 ADB 连接手机）
+- **游戏全屏**：连接后自动全屏横屏、沉浸式隐藏系统栏、无黑边
+- **息屏投屏**：投屏时手机屏幕自动熄灭（只关背光、不锁屏），投屏不断流——不经 MediaProjection，安卓 15+ 锁屏也不会中断投屏
+- **低延迟**：基于 scrcpy 协议（H.264 硬编硬解）
+- 支持反向操控、蓝牙手柄玩游戏
 
-## 原理
+## 工程结构
 
-- 传输协议：自定义 TCP，端口 `2026`。
-- 视频：H.264（Annex-B 裸流），手机端 `MediaCodec` 硬件编码，车机端硬件解码。
-- 编码默认 `1920×1080@30fps，8Mbps`，可在发送端界面修改分辨率。
-- 车机端强制横屏 + 沉浸式全屏。
+```
+easycontrol_car/
+  easycontrol/
+    app/    # 车机端主控 App（编译产物即车机端 APK）
+    server/ # 手机端服务端（编译后封装进车机端 App 的 res/raw，连接时自动推送）
+```
 
-## 云端编译（推荐）
+## 云端编译
 
-工程已内置 GitHub Actions 工作流 `.github/workflows/build.yml`，无需本地装 Android 工具链：
+内置 GitHub Actions 工作流 `.github/workflows/easycontrol-car-build.yml`，push 到 `easycontrol-car` 分支自动编译。
 
-1. 把整个 `carcast/` 目录推到一个 GitHub 仓库（含 `.github`）。
-2. 在仓库 **Actions** 页点 **Run workflow**（或直接 push 到 main）。
-3. 编译完成后在 **Actions → carcast-apks** 里下载两个 APK。
+编译产物在 **Actions → carcast-car-apk** 下载，或从 **Releases** 下载 `carcast-car.apk`。
 
-也可以本地编译：Android Studio 打开 `carcast/`，执行
-`./gradlew :receiver:assembleDebug :sender:assembleDebug`。
-（需要 JDK 17 + Android SDK。）
+## 使用方法（简版）
 
-## 使用方法
+1. **手机**：开发者选项 → 打开 USB 调试 + 无线调试，记下 IP:端口 和配对码。
+2. **车机**：安装 `carcast-car.apk` → 授权悬浮窗 → 添加设备，填手机 IP:端口 → 输配对码连接。
+3. **游戏**：手机蓝牙连手柄，游戏画面全屏横屏上大屏；手机可息屏省电。
 
-1. **车机开热点**（或手机开热点、车机连该热点），记下车机热点的网关 IP（通常是 `192.168.43.1`）。
-2. 车机装并打开 `receiver`：进入全屏等待界面，服务常驻监听 2026 端口。
-3. 手机装并打开 `sender`：填车机 IP（如 `192.168.43.1`）、端口 `2026`、分辨率 `1920x1080`，点“开始投屏”。
-4. 授权“屏幕录制/投屏”，画面即实时显示到车机全屏。
+详见 `easycontrol_car/使用说明.md`。
 
-## 说明
+## 协议许可
 
-- 车机端需允许安装未知来源 APK；不同车机需手动授予自启动/后台常驻权限（通常在系统设置里允许该 App 自启动）。
-- 手机与车机须在同一局域网（同一热点/路由器）。
-- 这是教学/自用项目，GPLv3 许可。代码仅供参考，请勿用于任何收费或商业分发。
+本工程基于 GPL-3.0 开源项目 Easycontrol_For_Car（https://github.com/eiyooooo/Easycontrol_For_Car）改造，遵循 GPL-3.0 许可。对外分发时须保留开源声明。
