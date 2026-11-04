@@ -9,6 +9,15 @@
 | `phone` | 荣耀手机 | `MediaProjection` 抓屏 → `MediaCodec` 编 H.264 → TCP 推流 |
 | `car` | 领克 09 车机 | TCP 拉流 → `MediaCodec` 硬解 → 全屏 `SurfaceView` 渲染 |
 
+## 构建状态
+
+已在 GitHub Actions 真实构建通过：run `41934017518`（`carmirror` 分支），结论 `success`，产出两个 debug 签名 APK，可直接侧载：
+
+| 文件 | 大小 |
+|---|---|
+| `car-debug.apk` | 20 KB |
+| `phone-debug.apk` | 23 KB |
+
 ## 为什么必须自建
 
 荣耀车联连这台车（HiCar 通道）本身是通的，但它的模型是"白名单应用 + 手机版界面塞进车机桌面"：
@@ -66,7 +75,7 @@ gradle :phone:assembleDebug :car:assembleDebug
 
 用 Android Studio 打开本目录直接 Run。工程版本组合：**AGP 8.1.3 + Gradle 8.0 + compileSdk 34 + minSdk 21 + Java 8 + JDK 17**（与既有车机工程一致，已验证可用）。
 
-> 本机当前没有 Android SDK / Android Studio，所以**代码尚未经过真实编译**，只做了：XML 资源全部解析通过、Java 语法级检查无结构错误、资源 id 与 `findViewById` 逐一核对。首次云端构建如报错，把日志贴回来即可修。
+工程已通过云端构建验证；本机无 Android SDK，本地直接用 Android Studio 打开即可。
 
 ## 使用
 
