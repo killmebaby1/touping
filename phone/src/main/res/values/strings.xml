@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">车镜 · 手机端</string>
+    <string name="btn_start">开始投屏</string>
+    <string name="btn_stop">停止投屏</string>
+</resources>
