@@ -11,7 +11,7 @@
 
 ## 构建状态
 
-已在 GitHub Actions 真实构建通过：最新一次 run `41942155187`（`carmirror` 分支，v1.0.2），结论 `success`，产出两个 debug 签名 APK，可直接侧载：
+已在 GitHub Actions 真实构建通过：最新一次 run `41942905858`（`carmirror` 分支，v1.0.3），结论 `success`，产出两个 debug 签名 APK，可直接侧载：
 
 | 文件 | 大小 |
 |---|---|
