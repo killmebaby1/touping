@@ -16,6 +16,7 @@ public class MainActivity extends Activity {
 
     private static final int REQ_CAPTURE = 1001;
     private static final int REQ_NOTIFY = 1002;
+    private static final int REQ_AUDIO = 1003;
 
     private TextView tvIp;
     private TextView tvStatus;
@@ -91,10 +92,29 @@ public class MainActivity extends Activity {
         MirrorService.localIp = idx >= 0 ? first.substring(idx + 2).trim() : first.trim();
     }
 
+    /** 先要录音权限（内录游戏声音用），没给也照样能投屏，只是没声音 */
     private void requestCapture() {
+        if (Build.VERSION.SDK_INT >= 23
+                && checkSelfPermission("android.permission.RECORD_AUDIO")
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{"android.permission.RECORD_AUDIO"}, REQ_AUDIO);
+            return;
+        }
+        startCaptureActivity();
+    }
+
+    private void startCaptureActivity() {
         MediaProjectionManager mpm =
                 (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         startActivityForResult(mpm.createScreenCaptureIntent(), REQ_CAPTURE);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_AUDIO) {
+            startCaptureActivity();
+        }
     }
 
     private void requestNotificationPermission() {

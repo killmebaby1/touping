@@ -29,6 +29,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private TextView tvLocal;
 
     private MirrorClient client;
+    private AudioPlayer audioPlayer;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private boolean surfaceReady;
@@ -65,6 +66,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
 
         client = new MirrorClient();
+        audioPlayer = new AudioPlayer();
 
         btnConnect.setOnClickListener(v -> toggleConnect());
         btnFind.setOnClickListener(v -> doDiscover());
@@ -88,6 +90,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         handler.removeCallbacksAndMessages(null);
         if (client != null) {
             client.stop();
+        }
+        if (audioPlayer != null) {
+            audioPlayer.stop();
         }
         super.onDestroy();
     }
@@ -130,6 +135,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void toggleConnect() {
         if (client.isRunning()) {
             client.stop();
+            audioPlayer.stop();
             handler.postDelayed(this::resetUi, 300);
             return;
         }
@@ -151,6 +157,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void startClient(String host) {
         pendingHost = null;
         tvState.setText("连接中…");
+        audioPlayer.stop();
+        audioPlayer.connect(host);
         client.connect(host, MirrorClient.PORT, surfaceView.getHolder().getSurface(),
                 new MirrorClient.Listener() {
                     @Override
@@ -176,6 +184,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     public void onDisconnected(final String reason) {
                         handler.post(() -> {
                             tvState.setText("已断开：" + reason);
+                            audioPlayer.stop();
                             panel.setVisibility(View.VISIBLE);
                             handler.removeCallbacks(hidePanelTask);
                         });

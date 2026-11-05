@@ -163,18 +163,7 @@ public class MirrorClient {
             listener.onVideoSize(width, height);
             listener.onState("已连接 " + width + "x" + height + " v" + version);
 
-            MediaFormat format = MediaFormat.createVideoFormat(
-                    MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
-            if (csd0.length > 0) {
-                format.setByteBuffer("csd-0", ByteBuffer.wrap(csd0));
-                if (csd1.length > 0) {
-                    format.setByteBuffer("csd-1", ByteBuffer.wrap(csd1));
-                }
-            }
-
-            codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
-            codec.configure(format, surface, null, 0);
-            codec.start();
+            codec = createDecoder(width, height, csd0, csd1, surface);
 
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             long pts = 0;
@@ -188,6 +177,42 @@ public class MirrorClient {
                 }
                 byte[] data = new byte[length];
                 in.readFully(data);
+
+                if (flags == 2) {
+                    // 手机转屏了：按新尺寸重建解码器
+                    int w2 = 0;
+                    int h2 = 0;
+                    byte[] s0 = new byte[0];
+                    byte[] s1 = new byte[0];
+                    try {
+                        ByteBuffer bb = ByteBuffer.wrap(data);
+                        w2 = bb.getInt();
+                        h2 = bb.getInt();
+                        int l0 = bb.getInt();
+                        s0 = new byte[l0];
+                        bb.get(s0);
+                        int l1 = bb.getInt();
+                        s1 = new byte[l1];
+                        bb.get(s1);
+                    } catch (Exception ignored) {
+                    }
+                    if (w2 > 0 && h2 > 0) {
+                        MediaCodec old = codec;
+                        codec = createDecoder(w2, h2, s0, s1, surface);
+                        try {
+                            if (old != null) {
+                                old.stop();
+                                old.release();
+                            }
+                        } catch (Exception ignored) {
+                        }
+                        pts = 0;
+                        firstFrame = true;
+                        listener.onVideoSize(w2, h2);
+                        listener.onState("已切到 " + w2 + "x" + h2);
+                    }
+                    continue;
+                }
 
                 int inputIndex = codec.dequeueInputBuffer(20000);
                 if (inputIndex >= 0) {
@@ -228,6 +253,27 @@ public class MirrorClient {
                 } catch (IOException ignored) {
                 }
             }
+        }
+    }
+
+private static MediaCodec createDecoder(int width, int height,
+                                            byte[] csd0, byte[] csd1,
+                                            Surface surface) {
+        MediaFormat format = MediaFormat.createVideoFormat(
+                MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
+        if (csd0 != null && csd0.length > 0) {
+            format.setByteBuffer("csd-0", ByteBuffer.wrap(csd0));
+            if (csd1 != null && csd1.length > 0) {
+                format.setByteBuffer("csd-1", ByteBuffer.wrap(csd1));
+            }
+        }
+        try {
+            MediaCodec codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+            codec.configure(format, surface, null, 0);
+            codec.start();
+            return codec;
+        } catch (Exception e) {
+            throw new RuntimeException("创建解码器失败：" + e);
         }
     }
 

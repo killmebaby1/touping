@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -27,7 +28,10 @@ import android.view.WindowManager;
 import java.nio.ByteBuffer;
 
 /**
- * 抓屏 -> MediaCodec(H.264) -> TCP 推流 的前台服务。
+ * 抓屏 + 内录 -> MediaCodec -> TCP 推流 的前台服务。
+ *
+ * 屏幕方向一变（比如游戏进横屏），编码分辨率就重建一次，
+ * 并通过参数更新消息把新的宽高和 SPS/PPS 推给车机。
  */
 public class MirrorService extends Service {
 
@@ -36,7 +40,6 @@ public class MirrorService extends Service {
     public static final String EXTRA_RESULT_CODE = "result_code";
     public static final String EXTRA_RESULT_DATA = "result_data";
 
-    /** Activity 轮询这两个静态字段来展示状态 */
     public static volatile String statusText = "空闲";
     public static volatile String localIp = "";
 
@@ -48,16 +51,19 @@ public class MirrorService extends Service {
     private static final int MAX_LONG_SIDE = 1920;
 
     private MediaProjection projection;
-    private MediaCodec codec;
+    private volatile MediaCodec codec;
     private VirtualDisplay virtualDisplay;
-    private Surface inputSurface;
+    private volatile Surface inputSurface;
     private StreamServer server;
+    private AudioStream audioStream;
     private Thread encodeThread;
 
     private volatile boolean active;
     private volatile boolean stopping;
-    private int encW;
-    private int encH;
+    private volatile boolean pendingFormatChange;
+    private volatile int encW;
+    private volatile int encH;
+    private int lastRotation = -1;
 
     @Override
     public void onCreate() {
@@ -113,7 +119,7 @@ public class MirrorService extends Service {
         }
         return builder
                 .setContentTitle("车镜正在投屏")
-                .setContentText("手机画面正在发送给车机")
+                .setContentText("手机画面与声音正在发送给车机")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setOngoing(true)
                 .build();
@@ -153,24 +159,13 @@ public class MirrorService extends Service {
         int[] size = pickEncoderSize();
         encW = size[0];
         encH = size[1];
+        lastRotation = currentRotation();
 
         try {
-            MediaFormat format = MediaFormat.createVideoFormat(
-                    MediaFormat.MIMETYPE_VIDEO_AVC, encW, encH);
-            format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                    MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-            format.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
-            format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
-            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-            if (Build.VERSION.SDK_INT >= 23) {
-                format.setInteger(MediaFormat.KEY_BITRATE_MODE,
-                        MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
-            }
-
-            codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
-            codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            inputSurface = codec.createInputSurface();
-            codec.start();
+            MediaCodec c = createEncoder(encW, encH);
+            inputSurface = c.createInputSurface();
+            c.start();
+            codec = c;
 
             int dpi = getResources().getDisplayMetrics().densityDpi;
             virtualDisplay = projection.createVirtualDisplay(
@@ -184,6 +179,11 @@ public class MirrorService extends Service {
             server.start();
             server.publishVideoInfo(encW, encH, null, null);
 
+            if (hasRecordPermission()) {
+                audioStream = new AudioStream(this, projection);
+                audioStream.start();
+            }
+
             active = true;
             encodeThread = new Thread(this::encodeLoop, "cm-encode");
             encodeThread.start();
@@ -195,22 +195,62 @@ public class MirrorService extends Service {
         }
     }
 
+    private boolean hasRecordPermission() {
+        if (Build.VERSION.SDK_INT < 23) {
+            return true;
+        }
+        return checkSelfPermission("android.permission.RECORD_AUDIO")
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private MediaCodec createEncoder(int w, int h) throws Exception {
+        MediaFormat format = MediaFormat.createVideoFormat(
+                MediaFormat.MIMETYPE_VIDEO_AVC, w, h);
+        format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
+        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+        if (Build.VERSION.SDK_INT >= 23) {
+            format.setInteger(MediaFormat.KEY_BITRATE_MODE,
+                    MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+        }
+        MediaCodec c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+        c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        return c;
+    }
+
     private void encodeLoop() {
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+        int tick = 0;
         while (active && !stopping) {
+            MediaCodec c = codec;
+            if (c == null) {
+                break;
+            }
             try {
-                int index = codec.dequeueOutputBuffer(info, 10000);
+                if (++tick % 15 == 0 && rotationChanged()) {
+                    rebuildEncoder();
+                    continue;
+                }
+
+                int index = c.dequeueOutputBuffer(info, 10000);
                 if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    MediaFormat of = codec.getOutputFormat();
+                    MediaFormat of = c.getOutputFormat();
                     byte[] s0 = readCsd(of, "csd-0");
                     byte[] s1 = readCsd(of, "csd-1");
                     if (server != null && s0.length > 0) {
-                        server.publishVideoInfo(encW, encH, s0, s1);
+                        if (pendingFormatChange) {
+                            server.pushFormatChange(encW, encH, s0, s1);
+                            pendingFormatChange = false;
+                        } else {
+                            server.publishVideoInfo(encW, encH, s0, s1);
+                        }
                     }
                     continue;
                 }
                 if (index >= 0) {
-                    ByteBuffer buffer = codec.getOutputBuffer(index);
+                    ByteBuffer buffer = c.getOutputBuffer(index);
                     if (buffer != null && info.size > 0) {
                         buffer.position(info.offset);
                         buffer.limit(info.offset + info.size);
@@ -222,7 +262,7 @@ public class MirrorService extends Service {
                             server.pushFrame(framed, keyFrame);
                         }
                     }
-                    codec.releaseOutputBuffer(index, false);
+                    c.releaseOutputBuffer(index, false);
                 }
             } catch (Exception e) {
                 if (active) {
@@ -231,6 +271,88 @@ public class MirrorService extends Service {
                 break;
             }
         }
+    }
+
+    /** 转屏了就把编码器按新尺寸重建，车机那边会跟着换解码尺寸 */
+    private void rebuildEncoder() {
+        int[] size = pickEncoderSize();
+        int w = size[0];
+        int h = size[1];
+        lastRotation = currentRotation();
+        if (w == encW && h == encH) {
+            return;
+        }
+        MediaCodec newCodec = null;
+        Surface newSurface = null;
+        try {
+            newCodec = createEncoder(w, h);
+            newSurface = newCodec.createInputSurface();
+            newCodec.start();
+
+            MediaCodec oldCodec = codec;
+            Surface oldSurface = inputSurface;
+
+            codec = newCodec;
+            inputSurface = newSurface;
+            encW = w;
+            encH = h;
+            pendingFormatChange = true;
+
+            if (virtualDisplay != null) {
+                virtualDisplay.setSurface(newSurface);
+                virtualDisplay.resize(w, h, getResources().getDisplayMetrics().densityDpi);
+            }
+
+            try {
+                if (oldCodec != null) {
+                    oldCodec.stop();
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                if (oldCodec != null) {
+                    oldCodec.release();
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                if (oldSurface != null) {
+                    oldSurface.release();
+                }
+            } catch (Exception ignored) {
+            }
+        } catch (Exception e) {
+            statusText = "转屏后重建编码器失败：" + e;
+            try {
+                if (newCodec != null) {
+                    newCodec.release();
+                }
+            } catch (Exception ignored) {
+            }
+            try {
+                if (newSurface != null) {
+                    newSurface.release();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private int currentRotation() {
+        try {
+            WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+            return wm.getDefaultDisplay().getRotation();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private boolean rotationChanged() {
+        int r = currentRotation();
+        if (r < 0 || lastRotation < 0) {
+            return false;
+        }
+        return r != lastRotation;
     }
 
     private void requestKeyFrame() {
@@ -246,7 +368,6 @@ public class MirrorService extends Service {
         }
     }
 
-    /** 个别机型输出 AVCC 风格的 NAL，这里统一补上 Annex-B 起始码 */
     private static byte[] ensureStartCode(byte[] data) {
         if (data.length >= 4 && data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) {
             return data;
@@ -277,7 +398,11 @@ public class MirrorService extends Service {
         }
     }
 
-    /** 按屏幕长边缩放到 <=1920，并对齐到 16 的倍数 */
+    /**
+     * 按当前屏幕尺寸算编码分辨率。
+     * 不同 ROM 的 getRealMetrics 是否随旋转变化不一致，这里两种情况都兜住：
+     * 只有"已经是横屏方向、但读出来的尺寸仍是竖的"才交换宽高。
+     */
     private int[] pickEncoderSize() {
         WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
         Display display = wm.getDefaultDisplay();
@@ -286,10 +411,9 @@ public class MirrorService extends Service {
 
         int sw = dm.widthPixels;
         int sh = dm.heightPixels;
-
-        // 手机横着用时交换宽高，画面才不会在车机上被压扁
         int rotation = display.getRotation();
-        if (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270) {
+        boolean rotated = rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270;
+        if (rotated && sh > sw) {
             int tmp = sw;
             sw = sh;
             sh = tmp;
@@ -314,7 +438,6 @@ public class MirrorService extends Service {
         stopping = true;
         active = false;
 
-        // 先让编码线程退出，再释放 codec，避免在 dequeue 过程中被 release 造成 native crash
         Thread t = encodeThread;
         if (t != null) {
             try {
@@ -324,6 +447,10 @@ public class MirrorService extends Service {
         }
         encodeThread = null;
 
+        if (audioStream != null) {
+            audioStream.stop();
+            audioStream = null;
+        }
         try {
             if (virtualDisplay != null) {
                 virtualDisplay.release();
@@ -337,9 +464,10 @@ public class MirrorService extends Service {
         } catch (Exception ignored) {
         }
         try {
-            if (codec != null) {
-                codec.stop();
-                codec.release();
+            MediaCodec c = codec;
+            if (c != null) {
+                c.stop();
+                c.release();
             }
         } catch (Exception ignored) {
         }
@@ -358,7 +486,8 @@ public class MirrorService extends Service {
         codec = null;
         projection = null;
         server = null;
-        encodeThread = null;
+        pendingFormatChange = false;
+        lastRotation = -1;
 
         statusText = "空闲";
         stopForegroundCompat();

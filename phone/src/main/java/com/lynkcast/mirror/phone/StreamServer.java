@@ -9,30 +9,29 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 极简推流服务端 + UDP 自动发现。
+ * 推流服务端 + UDP 自动发现。
  *
- * 推流协议（TCP 7801，全部大端）：
- *   连接建立后，服务端先发头部：
- *     byte[4] magic = "CMSH"
- *     int32   version = 1
- *     int32   width
- *     int32   height
- *     int32   csd0Len + csd0 bytes   (SPS)
- *     int32   csd1Len + csd1 bytes   (PPS)
- *   之后每帧：
- *     int32   flags   (1 = 关键帧)
- *     int32   length
- *     byte[length]    (Annex-B 格式 H.264)
+ * TCP 7801，连接后先发头部（全部大端）：
+ *   byte[4] magic = "CMSH"
+ *   int32   version = 1
+ *   int32   width
+ *   int32   height
+ *   int32   csd0Len + csd0 (SPS)
+ *   int32   csd1Len + csd1 (PPS)
  *
- * 发现协议（UDP 7802）：
- *   车机往广播地址发包，本服务原路回 "CARMIRROR:7801"。
- *   车机把回复包的源地址当作手机地址。这样就不需要手机自己去猜
- *   "我的热点 IP 是多少"：荣耀的 SoftAP 网卡常常枚举不到。
+ * 之后统一为：int32 flags / int32 length / byte[length]
+ *   flags = 0  普通视频帧，payload 是 Annex-B H.264
+ *   flags = 1  关键视频帧
+ *   flags = 2  参数更新：int32 w, int32 h, int32 csd0Len+csd0, int32 csd1Len+csd1
+ *              （手机转屏、游戏进横屏后编码尺寸变了就发这一条）
+ *
+ * UDP 7802：车机广播找手机，服务端原路回 "CARMIRROR:7801"。
  */
 public class StreamServer {
 
@@ -56,7 +55,6 @@ public class StreamServer {
     private volatile ClientHandler client;
     private volatile String state = "等待车机连接";
 
-    /** 车机接入时回调，用于让编码器立刻吐一个关键帧 */
     public volatile Runnable onClientConnected;
 
     public String getState() {
@@ -106,11 +104,30 @@ public class StreamServer {
     public void pushFrame(byte[] data, boolean key) {
         ClientHandler c = client;
         if (c != null) {
-            c.offer(data, key);
+            c.offer(data, key ? 1 : 0);
         }
     }
 
-    /** 列出本机所有可用 IPv4（带网卡名），只用于界面排查 */
+    /** 编码尺寸变了：把新尺寸和新的 SPS/PPS 立刻推给车机，它据此重建解码器 */
+    public void pushFormatChange(int w, int h, byte[] s0, byte[] s1) {
+        publishVideoInfo(w, h, s0, s1);
+        ClientHandler c = client;
+        if (c == null) {
+            return;
+        }
+        byte[] p0 = s0 == null ? new byte[0] : s0;
+        byte[] p1 = s1 == null ? new byte[0] : s1;
+        byte[] payload = new byte[16 + p0.length + p1.length];
+        ByteBuffer bb = ByteBuffer.wrap(payload);
+        bb.putInt(w);
+        bb.putInt(h);
+        bb.putInt(p0.length);
+        bb.put(p0);
+        bb.putInt(p1.length);
+        bb.put(p1);
+        c.offer(payload, 2);
+    }
+
     public static String describeAddresses() {
         StringBuilder sb = new StringBuilder();
         try {
@@ -154,7 +171,6 @@ public class StreamServer {
                 socket.send(reply);
             }
         } catch (Exception ignored) {
-            // 端口被占用或已停止，静默退出，不影响 TCP 推流
         } finally {
             if (socket != null) {
                 socket.close();
@@ -215,18 +231,25 @@ public class StreamServer {
             active = false;
             try {
                 socket.close();
-            } catch (IOException ignored) {
+            }
+        catch (IOException ignored) {
             }
         }
 
-        void offer(byte[] data, boolean key) {
+        void offer(byte[] data, int flags) {
             if (!active) {
                 return;
             }
-            if (!queue.offer(new Frame(data, key))) {
-                if (key) {
+            if (flags == 2) {
+                // 参数更新必须送达：清掉积压的旧帧再放
+                queue.clear();
+                queue.offer(new Frame(data, 2));
+                return;
+            }
+            if (!queue.offer(new Frame(data, flags))) {
+                if (flags == 1) {
                     queue.poll();
-                    queue.offer(new Frame(data, key));
+                    queue.offer(new Frame(data, 1));
                 }
             }
         }
@@ -264,7 +287,7 @@ public class StreamServer {
                     if (f == null) {
                         continue;
                     }
-                    out.writeInt(f.key ? 1 : 0);
+                    out.writeInt(f.flags);
                     out.writeInt(f.data.length);
                     out.write(f.data);
                     out.flush();
@@ -286,11 +309,11 @@ public class StreamServer {
 
     private static class Frame {
         final byte[] data;
-        final boolean key;
+        final int flags;
 
-        Frame(byte[] data, boolean key) {
+        Frame(byte[] data, int flags) {
             this.data = data;
-            this.key = key;
+            this.flags = flags;
         }
     }
 }

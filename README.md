@@ -15,8 +15,8 @@
 
 | 文件 | 大小 |
 |---|---|
-| `car-debug.apk` | 20 KB |
-| `phone-debug.apk` | 23 KB |
+| `car-debug.apk` | 约 25 KB |
+| `phone-debug.apk` | 约 27 KB |
 
 ## 为什么必须自建
 
@@ -48,9 +48,22 @@ int32   csd1Len + csd1 bytes     // PPS
 之后逐帧：
 
 ```
-int32   flags      // 1 = 关键帧
+int32   flags
 int32   length
-byte[length]       // Annex-B 格式 H.264
+byte[length]
+```
+
+- `flags = 0`：普通视频帧，payload 是 Annex-B H.264
+- `flags = 1`：关键帧
+- `flags = 2`：参数更新 `int32 w, int32 h, int32 csd0Len+csd0, int32 csd1Len+csd1`——手机转屏、游戏进横屏后编码尺寸变了就发这一条，车机收到后重建解码器
+
+音频走另一条连接 **7803**（同一个手机 IP）：
+
+```
+int32   sampleRate      // 44100
+int32   channels        // 2
+int32   csdLen + csd    // AudioSpecificConfig
+之后：int32 length + byte[length]   // AAC 裸帧
 ```
 
 设计要点：
@@ -83,7 +96,7 @@ gradle :phone:assembleDebug :car:assembleDebug
 
 1. 装 `phone` APK，打开，授予通知权限。
 2. **建议先开手机热点，让车机连这个热点**（车机连手机热点，延迟和稳定性都比两个设备连同一个路由器好）。
-3. 点"开始投屏"，系统弹出录屏授权 → 允许。
+3. 点"开始投屏"，首次会先要**录音权限**（内录游戏声音用，允许才有声），再弹录屏授权 → 都允许。
 4. 界面会列出本机所有网卡地址（同时连 Wi-Fi 又开热点时会有两条），**不用记**——车机会自己找。
 5. 投屏期间**不要锁屏**（锁屏后画面会中断），可以把亮度调低。
 6. 想投横屏内容，就把手机横过来再点"开始投屏"——编码分辨率按启动瞬间的方向确定，中途转屏会变形，需要停止后重连。
@@ -108,6 +121,7 @@ gradle :phone:assembleDebug :car:assembleDebug
 
 ## 更新记录
 
+- **v1.0.2**：编码分辨率跟随屏幕方向变化重建（游戏进横屏不再被压扁），新增 AAC 内录与车机端音频播放。
 - **v1.0.1**：加 UDP 自动发现，手机端改为列出全部网卡地址，车机端显示自身地址。修复"热点下两台设备不在同一网段"的连不上问题（根因是手机端只报 Wi-Fi 地址，车机照错地址连）。
 - **v1.0.0**：双端初版，TCP 7801 + 裸 H.264。
 
@@ -115,7 +129,7 @@ gradle :phone:assembleDebug :car:assembleDebug
 
 - **锁屏即断**：`MediaProjection` 抓的是屏幕内容，熄屏就没有画面。真要做"熄屏投屏"得另走虚拟显示方案，不在这一版。
 - **断线不自动重连**：车机端点一次"连接"即可；重连会重新请求关键帧。
-- **没有声音**：只搬了视频。音频要另加 `AudioPlaybackCapture` 或 `MediaProjection` 音频通道，且车机侧要接管音频焦点。
+- **声音是内录的，有条件**：走 `AudioPlaybackCapture`（Android 10+），只抓"系统正在播放的音频"，所以游戏 BGM/音效可以，麦克风里的说话不会过去。被投屏的 App 如果自己声明了禁止被内录（少数游戏会），那它还是没声音。另外必须授予录音权限，否则只有画面没有声音。
 - **触摸反向控制没有**：车机只能看，不能操作手机。
 - **延迟预期**：同一 Wi-Fi 下 100~200ms 量级，热点直连更低；Wi-Fi 干扰大时会卡顿掉帧。
 - **首次授权**：荣耀手机重启后首次投屏需要重新授权一次，这是系统行为，绕不过。
