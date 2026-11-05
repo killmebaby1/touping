@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
     private Button btnStart;
     private Button btnStop;
     private Button btnDim;
+    private Button btnUpdate;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable refresher = new Runnable() {
@@ -43,6 +44,7 @@ public class MainActivity extends Activity {
         btnStart = findViewById(R.id.btn_start);
         btnStop = findViewById(R.id.btn_stop);
         btnDim = findViewById(R.id.btn_dim);
+        btnUpdate = findViewById(R.id.btn_update);
 
         refreshAddresses();
 
@@ -55,9 +57,37 @@ public class MainActivity extends Activity {
         });
 
         btnDim.setOnClickListener(v -> toggleDim());
+        btnUpdate.setOnClickListener(v -> checkUpdate());
         updateDimLabel();
 
         requestNotificationPermission();
+    }
+
+    private void checkUpdate() {
+        Toast.makeText(this, "正在检查更新…", Toast.LENGTH_SHORT).show();
+        UpdateCheck.check(this, new UpdateCheck.Callback() {
+            @Override
+            public void onUpdate(int remoteCode, String tag, String url) {
+                runOnUiThread(() -> showUpdate(tag, url));
+            }
+
+            @Override
+            public void onNothing(boolean fail) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        fail ? "检查更新失败，请确认手机能上网" : "已是最新版本",
+                        Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private void showUpdate(String tag, final String url) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("发现新版本 " + tag)
+                .setMessage("是否下载并安装？")
+                .setPositiveButton("下载并安装",
+                        (d, w) -> UpdateCheck.downloadAndInstall(this, url))
+                .setNegativeButton("稍后", null)
+                .show();
     }
 
     private void updateDimLabel() {
@@ -95,6 +125,13 @@ public class MainActivity extends Activity {
         super.onResume();
         refreshAddresses();
         handler.post(refresher);
+        updateDimLabel();
+        // 开了暗屏却没给权限，是最常见的"按了没反应"，这里主动提醒
+        if (Build.VERSION.SDK_INT >= 23
+                && getSharedPreferences("carmirror_phone", MODE_PRIVATE).getBoolean("dim_on", false)
+                && !android.provider.Settings.System.canWrite(this)) {
+            Toast.makeText(this, "暗屏未生效：还没允许「修改系统设置」", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override

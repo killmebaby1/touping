@@ -77,6 +77,14 @@
             android:text="@string/btn_dim_off"
             android:textSize="20sp" />
 
+        <Button
+            android:id="@+id/btn_update"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/btn_update"
+            android:textSize="20sp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

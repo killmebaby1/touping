@@ -47,7 +47,7 @@ public class MirrorService extends Service {
     private static final String CHANNEL_ID = "carmirror_mirror";
 
     /** 游戏画面运动量大，8Mbps 会糊成一片、快动时像拖影；拉到 24Mbps 让块效应消失 */
-    private static final int BITRATE = 28 * 1024 * 1024;
+    private static final int BITRATE = 20 * 1024 * 1024;
     /** 30fps 在车机上看着有拖影感，提到 60fps */
     private static final int FRAME_RATE = 60;
     private static final int MAX_LONG_SIDE = 1920;
@@ -66,6 +66,8 @@ public class MirrorService extends Service {
     /** 暗屏省电：投屏前记录的亮度与亮度模式，停止时恢复 */
     private int savedBrightness = -1;
     private int savedBrightnessMode = -1;
+    private Handler dimHandler;
+    private Runnable dimTask;
 
     private MediaProjection projection;
     private volatile MediaCodec codec;
@@ -223,9 +225,9 @@ public class MirrorService extends Service {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    /**
-     * 暗屏省电：把系统亮度压到最低。
-     * 注意这只是"极暗"，不是真正息屏——真正息屏会让系统停止屏幕合成，
+        /**
+     * 暗屏省电：把系统亮度压到 0（最暗档）。
+     * 注意这只是"屏幕极暗"，不是真正息屏——真正息屏会让系统停止屏幕合成，
      * 采集端拿到的就是黑帧，车机画面会断。极暗状态下合成仍在继续，画面正常。
      */
     private void applyDimIfEnabled() {
@@ -234,6 +236,7 @@ public class MirrorService extends Service {
                 return;
             }
             if (!android.provider.Settings.System.canWrite(this)) {
+                statusText = "暗屏未生效：请到系统设置里允许本应用「修改系统设置」";
                 return;
             }
             android.content.SharedPreferences sp =
@@ -248,16 +251,49 @@ public class MirrorService extends Service {
                 savedBrightnessMode = android.provider.Settings.System.getInt(
                         cr, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, 0);
             }
-            android.provider.Settings.System.putInt(cr,
-                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, 0);
-            android.provider.Settings.System.putInt(cr,
-                    android.provider.Settings.System.SCREEN_BRIGHTNESS, 1);
+            writeDimOnce();
+            // 部分 ROM 的自动亮度会马上把值改回去，隔几秒重写一次压住它
+            startDimKeepAlive();
         } catch (Throwable ignored) {
         }
     }
 
+    private void writeDimOnce() {
+        try {
+            android.content.ContentResolver cr = getContentResolver();
+            android.provider.Settings.System.putInt(cr,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
+            android.provider.Settings.System.putInt(cr,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, 0);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void startDimKeepAlive() {
+        if (dimTask != null) {
+            return;
+        }
+        dimHandler = new Handler(Looper.getMainLooper());
+        dimTask = new Runnable() {
+            @Override
+            public void run() {
+                if (!active) {
+                    return;
+                }
+                writeDimOnce();
+                dimHandler.postDelayed(this, 4000);
+            }
+        };
+        dimHandler.postDelayed(dimTask, 4000);
+    }
+
     private void restoreBrightness() {
         try {
+            if (dimHandler != null && dimTask != null) {
+                dimHandler.removeCallbacks(dimTask);
+                dimTask = null;
+            }
             if (savedBrightness < 0) {
                 return;
             }

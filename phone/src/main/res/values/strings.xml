@@ -5,4 +5,8 @@
     <string name="btn_stop">停止投屏</string>
     <string name="btn_dim_off">暗屏省电：关闭</string>
     <string name="btn_dim_on">暗屏省电：开启（投屏时自动压到最暗）</string>
+    <string name="btn_update">检查更新</string>
+    <string name="update_title">发现新版本</string>
+    <string name="update_download">下载并安装</string>
+    <string name="update_later">稍后</string>
 </resources>

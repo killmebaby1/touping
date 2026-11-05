@@ -139,7 +139,7 @@ public class MirrorClient {
             Socket s = new Socket();
             s.connect(new InetSocketAddress(host, port), 4000);
             // 接收缓冲别开太大：512KB 在 28Mbps 下要攒两三百毫秒，延迟全堆在这
-            s.setReceiveBufferSize(192 * 1024);
+            s.setReceiveBufferSize(256 * 1024);
             s.setTcpNoDelay(true);
             socket = s;
 
