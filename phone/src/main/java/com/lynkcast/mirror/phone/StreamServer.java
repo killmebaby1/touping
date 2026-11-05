@@ -56,6 +56,7 @@ public class StreamServer {
     private volatile String state = "等待车机连接";
 
     public volatile Runnable onClientConnected;
+    public volatile Runnable onNeedKeyFrame;
 
     public String getState() {
         return state;
@@ -215,8 +216,10 @@ public class StreamServer {
     private class ClientHandler {
 
         private final Socket socket;
-        private final ArrayBlockingQueue<Frame> queue = new ArrayBlockingQueue<>(6);
+        private final ArrayBlockingQueue<Frame> queue = new ArrayBlockingQueue<>(8);
         private volatile boolean active = true;
+        /** 拥塞或参数变更后，在下一个关键帧到来前不发任何帧，避免缺参考帧花屏 */
+        private volatile boolean dropUntilKeyFrame;
 
         ClientHandler(Socket socket) {
             this.socket = socket;
@@ -241,15 +244,35 @@ public class StreamServer {
                 return;
             }
             if (flags == 2) {
-                // 参数更新必须送达：清掉积压的旧帧再放
+                // 参数更新必须送达：清掉积压的旧帧再放，并且新尺寸下必须等关键帧
                 queue.clear();
+                dropUntilKeyFrame = true;
                 queue.offer(new Frame(data, 2));
                 return;
             }
+            if (dropUntilKeyFrame) {
+                if (flags != 1) {
+                    return;
+                }
+                dropUntilKeyFrame = false;
+            }
             if (!queue.offer(new Frame(data, flags))) {
+                // 队列积压 = 链路跟不上。此时丢掉单个普通帧会破坏 H.264 参考链，
+                // 解码端会花屏直到下一个 I 帧。整队清空并进入"只等关键帧"状态，
+                // 再让编码器立刻吐一个 I 帧，花屏窗口最短且不会残缺参考帧。
+                queue.clear();
                 if (flags == 1) {
-                    queue.poll();
+                    dropUntilKeyFrame = false;
                     queue.offer(new Frame(data, 1));
+                } else {
+                    dropUntilKeyFrame = true;
+                    Runnable hook = onNeedKeyFrame;
+                    if (hook != null) {
+                        try {
+                            hook.run();
+                        } catch (Exception ignored) {
+                        }
+                    }
                 }
             }
         }

@@ -87,6 +87,14 @@
                 android:layout_marginStart="10dp"
                 android:text="@string/btn_connect"
                 android:textSize="17sp" />
+
+            <Button
+                android:id="@+id/btn_fit"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginStart="10dp"
+                android:text="@string/btn_fill_on"
+                android:textSize="16sp" />
         </LinearLayout>
     </LinearLayout>
 

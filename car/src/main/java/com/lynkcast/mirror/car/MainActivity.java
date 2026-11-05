@@ -25,6 +25,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private EditText etIp;
     private Button btnConnect;
     private Button btnFind;
+    private Button btnFit;
     private TextView tvState;
     private TextView tvLocal;
 
@@ -56,6 +57,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         btnFind = findViewById(R.id.btn_find);
         tvState = findViewById(R.id.tv_state);
         tvLocal = findViewById(R.id.tv_local);
+        btnFit = findViewById(R.id.btn_fit);
 
         surfaceView.getHolder().addCallback(this);
 
@@ -64,12 +66,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (!lastIp.isEmpty()) {
             etIp.setText(lastIp);
         }
+        surfaceView.setFill(sp.getBoolean("fill", true));
+        updateFitLabel();
 
         client = new MirrorClient();
         audioPlayer = new AudioPlayer();
 
         btnConnect.setOnClickListener(v -> toggleConnect());
         btnFind.setOnClickListener(v -> doDiscover());
+        btnFit.setOnClickListener(v -> {
+            boolean now = !surfaceView.isFill();
+            surfaceView.setFill(now);
+            getSharedPreferences(PREF, MODE_PRIVATE).edit().putBoolean("fill", now).apply();
+            updateFitLabel();
+        });
 
         String local = MirrorClient.describeLocalAddresses();
         tvLocal.setText(local.isEmpty()
@@ -190,6 +200,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                         });
                     }
                 });
+    }
+
+    private void updateFitLabel() {
+        btnFit.setText(surfaceView.isFill() ? R.string.btn_fill_on : R.string.btn_fill_off);
     }
 
     private void resetUi() {

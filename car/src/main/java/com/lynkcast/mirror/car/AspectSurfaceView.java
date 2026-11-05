@@ -5,11 +5,14 @@ import android.util.AttributeSet;
 import android.view.SurfaceView;
 
 /**
- * 按视频宽高比做等比缩放，避免画面被拉伸变形。
+ * 画面承载视图，两种摆放方式：
+ *   铺满（默认）：按屏幕尺寸拉伸填满，不留黑边，比例不一致时会有一点变形
+ *   原比例：等比居中，比例不一致时会出现黑边
  */
 public class AspectSurfaceView extends SurfaceView {
 
     private float ratio = 0f;
+    private boolean fill = true;
 
     public AspectSurfaceView(Context context) {
         super(context);
@@ -30,12 +33,23 @@ public class AspectSurfaceView extends SurfaceView {
         }
     }
 
+    public void setFill(boolean f) {
+        if (fill != f) {
+            fill = f;
+            requestLayout();
+        }
+    }
+
+    public boolean isFill() {
+        return fill;
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
         int height = MeasureSpec.getSize(heightMeasureSpec);
 
-        if (ratio <= 0f || width <= 0 || height <= 0) {
+        if (fill || ratio <= 0f || width <= 0 || height <= 0) {
             setMeasuredDimension(width, height);
             return;
         }

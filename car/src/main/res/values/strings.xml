@@ -4,4 +4,6 @@
     <string name="btn_find">自动查找</string>
     <string name="btn_connect">连接</string>
     <string name="btn_disconnect">断开</string>
+    <string name="btn_fill_on">铺满</string>
+    <string name="btn_fill_off">原比例</string>
 </resources>

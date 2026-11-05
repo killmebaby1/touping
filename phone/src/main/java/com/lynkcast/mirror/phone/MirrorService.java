@@ -176,6 +176,7 @@ public class MirrorService extends Service {
 
             server = new StreamServer();
             server.onClientConnected = this::requestKeyFrame;
+            server.onNeedKeyFrame = this::requestKeyFrame;
             server.start();
             server.publishVideoInfo(encW, encH, null, null);
 
@@ -214,6 +215,12 @@ public class MirrorService extends Service {
         if (Build.VERSION.SDK_INT >= 23) {
             format.setInteger(MediaFormat.KEY_BITRATE_MODE,
                     MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+        }
+        // 手机屏幕是 full range sRGB，按 BT.709 + full range 标注并让编码器写进 VUI，
+        // 否则车机解码端容易按 BT.601 limited 解释，画面显得发灰发淡。
+        if (Build.VERSION.SDK_INT >= 24) {
+            format.setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_StandardBT709);
+            format.setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RangeFull);
         }
         MediaCodec c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
