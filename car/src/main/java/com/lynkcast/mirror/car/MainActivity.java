@@ -22,7 +22,12 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 
     private static final String PREF = "carmirror";
-    private static final String KEY_FILL = "fill";
+    /**
+     * 摆放模式的存储 key。v1.0.4 用的是 "fill" 且存的是 boolean，
+     * v1.0.5 起改成 int 读同一个 key，老用户升级上来 getInt 会抛 ClassCastException 直接闪退。
+     * 换新 key 名称，彻底不和旧值碰面。
+     */
+    private static final String KEY_FILL = "fill_mode_v2";
 
     private FrameLayout root;
     private MirrorTextureView view;
@@ -55,8 +60,39 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 崩了也要留下现场：把栈写到应用私有目录的 crash.log，下次启动可读
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread thread, Throwable e) {
+                try {
+                    java.io.File dir = getExternalFilesDir(null);
+                    if (dir == null) {
+                        dir = getFilesDir();
+                    }
+                    java.io.FileWriter fw = new java.io.FileWriter(
+                            new java.io.File(dir, "crash.log"), true);
+                    fw.write(new java.util.Date().toString() + "\\n");
+                    fw.write(android.util.Log.getStackTraceString(e) + "\\n\\n");
+                    fw.close();
+                } catch (Throwable ignored) {
+                }
+                android.os.Process.killProcess(android.os.Process.myPid());
+                System.exit(1);
+            }
+        });
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        setContentView(R.layout.activity_main);
+        try {
+            setContentView(R.layout.activity_main);
+        } catch (Throwable e) {
+            // 布局都不给加载的话，至少把原因显示出来，而不是让用户面对一闪而退
+            TextView err = new TextView(this);
+            err.setTextSize(16);
+            err.setTextColor(0xFFFF7777);
+            err.setPadding(24, 24, 24, 24);
+            err.setText("界面加载失败：\\n" + android.util.Log.getStackTraceString(e));
+            setContentView(err);
+            return;
+        }
 
         root = findViewById(R.id.root);
         view = findViewById(R.id.surface);
@@ -106,7 +142,7 @@ public class MainActivity extends Activity {
         if (!lastIp.isEmpty()) {
             etIp.setText(lastIp);
         }
-        fillMode = sp.getInt(KEY_FILL, MirrorTextureView.MODE_CROP);
+        fillMode = readFillMode(sp);
         view.setMode(fillMode);
         updateFitLabel();
 
@@ -130,6 +166,7 @@ public class MainActivity extends Activity {
         tvLocal.setText(local.isEmpty()
                 ? "车机未联网，先连手机热点"
                 : "车机 " + local.replace("\n", " / "));
+
 
         root.setOnClickListener(v -> {
             if (panel.getVisibility() == View.VISIBLE) {
@@ -160,6 +197,16 @@ public class MainActivity extends Activity {
             decodeSurface = null;
         }
         super.onDestroy();
+    }
+
+    /** 读摆放模式，任何异常都退回默认，绝不让存储里的脏值把启动搞崩 */
+    private int readFillMode(SharedPreferences sp) {
+        try {
+            int m = sp.getInt(KEY_FILL, MirrorTextureView.MODE_CROP);
+            return (m >= 0 && m <= 2) ? m : MirrorTextureView.MODE_CROP;
+        } catch (Throwable e) {
+            return MirrorTextureView.MODE_CROP;
+        }
     }
 
     private void updateFitLabel() {
