@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">车镜 · 车机端</string>
+    <string name="btn_find">自动查找</string>
     <string name="btn_connect">连接</string>
     <string name="btn_disconnect">断开</string>
 </resources>

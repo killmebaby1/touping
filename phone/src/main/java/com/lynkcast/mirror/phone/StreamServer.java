@@ -3,15 +3,20 @@ package com.lynkcast.mirror.phone;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 极简推流服务端。
+ * 极简推流服务端 + UDP 自动发现。
  *
- * 协议（全部大端）：
+ * 推流协议（TCP 7801，全部大端）：
  *   连接建立后，服务端先发头部：
  *     byte[4] magic = "CMSH"
  *     int32   version = 1
@@ -23,15 +28,24 @@ import java.util.concurrent.TimeUnit;
  *     int32   flags   (1 = 关键帧)
  *     int32   length
  *     byte[length]    (Annex-B 格式 H.264)
+ *
+ * 发现协议（UDP 7802）：
+ *   车机往广播地址发包，本服务原路回 "CARMIRROR:7801"。
+ *   车机把回复包的源地址当作手机地址。这样就不需要手机自己去猜
+ *   "我的热点 IP 是多少"：荣耀的 SoftAP 网卡常常枚举不到。
  */
 public class StreamServer {
 
     public static final int PORT = 7801;
+    public static final int DISCOVERY_PORT = 7802;
 
-    private static final byte[] MAGIC = new byte[]{'C', 'M', 'S', 'H'};
+    private static final byte[] MAGIC = "CMSH".getBytes();
+    private static final byte[] DISCOVERY_REPLY = ("CARMIRROR:" + PORT).getBytes();
 
     private ServerSocket serverSocket;
+    private DatagramSocket discoverySocket;
     private Thread acceptThread;
+    private Thread discoveryThread;
     private volatile boolean running;
 
     private volatile int videoWidth;
@@ -42,7 +56,7 @@ public class StreamServer {
     private volatile ClientHandler client;
     private volatile String state = "等待车机连接";
 
-    /** 新客户端接入时回调，用于让编码器立刻吐一个关键帧 */
+    /** 车机接入时回调，用于让编码器立刻吐一个关键帧 */
     public volatile Runnable onClientConnected;
 
     public String getState() {
@@ -56,6 +70,8 @@ public class StreamServer {
         running = true;
         acceptThread = new Thread(this::acceptLoop, "cm-accept");
         acceptThread.start();
+        discoveryThread = new Thread(this::discoveryLoop, "cm-discovery");
+        discoveryThread.start();
     }
 
     public void stop() {
@@ -70,7 +86,14 @@ public class StreamServer {
             }
         } catch (IOException ignored) {
         }
+        try {
+            if (discoverySocket != null) {
+                discoverySocket.close();
+            }
+        } catch (Exception ignored) {
+        }
         serverSocket = null;
+        discoverySocket = null;
     }
 
     public void publishVideoInfo(int w, int h, byte[] s0, byte[] s1) {
@@ -84,6 +107,58 @@ public class StreamServer {
         ClientHandler c = client;
         if (c != null) {
             c.offer(data, key);
+        }
+    }
+
+    /** 列出本机所有可用 IPv4（带网卡名），只用于界面排查 */
+    public static String describeAddresses() {
+        StringBuilder sb = new StringBuilder();
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) {
+                    continue;
+                }
+                for (InetAddress addr : Collections.list(ni.getInetAddresses())) {
+                    String ip = addr.getHostAddress();
+                    if (ip == null || ip.indexOf(58) >= 0) {
+                        continue;
+                    }
+                    int pct = ip.indexOf(37);
+                    if (pct > 0) {
+                        ip = ip.substring(0, pct);
+                    }
+                    if (ip.startsWith("0.") || "127.0.0.1".equals(ip)) {
+                        continue;
+                    }
+                    sb.append(ni.getName()).append("  ").append(ip).append('\n');
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return sb.toString().trim();
+    }
+
+    private void discoveryLoop() {
+        DatagramSocket socket = null;
+        try {
+            socket = new DatagramSocket(DISCOVERY_PORT);
+            socket.setBroadcast(true);
+            discoverySocket = socket;
+            byte[] buffer = new byte[128];
+            while (running) {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
+                DatagramPacket reply = new DatagramPacket(
+                        DISCOVERY_REPLY, DISCOVERY_REPLY.length,
+                        packet.getAddress(), packet.getPort());
+                socket.send(reply);
+            }
+        } catch (Exception ignored) {
+            // 端口被占用或已停止，静默退出，不影响 TCP 推流
+        } finally {
+            if (socket != null) {
+                socket.close();
+            }
         }
     }
 
@@ -161,7 +236,6 @@ public class StreamServer {
                 DataOutputStream out = new DataOutputStream(
                         new BufferedOutputStream(socket.getOutputStream(), 256 * 1024));
 
-                // 等编码器吐出 csd（SPS/PPS）再发头部
                 long deadline = System.currentTimeMillis() + 15000;
                 while (active && (csd0 == null || csd0.length == 0)) {
                     if (System.currentTimeMillis() > deadline) {
@@ -196,7 +270,7 @@ public class StreamServer {
                     out.flush();
                 }
             } catch (Exception e) {
-                // 连接断开，正常退出
+                // 断开，正常退出
             } finally {
                 active = false;
                 try {

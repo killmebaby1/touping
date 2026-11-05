@@ -7,8 +7,14 @@ import android.view.Surface;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.util.Collections;
 import java.nio.ByteBuffer;
 
 /**
@@ -17,6 +23,72 @@ import java.nio.ByteBuffer;
 public class MirrorClient {
 
     public static final int PORT = 7801;
+    public static final int DISCOVERY_PORT = 7802;
+
+    /**
+     * UDP 广播找手机端，返回手机在当前网段的 IP，找不到返回 null。
+     * 用应答包的源地址定位，手机端不需要自己猜热点 IP。
+     */
+    public static String discover(int timeoutMs) {
+        DatagramSocket socket = null;
+        try {
+            socket = new DatagramSocket();
+            socket.setBroadcast(true);
+            socket.setSoTimeout(timeoutMs);
+            byte[] req = "CARMIRROR?".getBytes();
+            DatagramPacket packet = new DatagramPacket(req, req.length,
+                    InetAddress.getByName("255.255.255.255"), DISCOVERY_PORT);
+            socket.send(packet);
+
+            byte[] buffer = new byte[128];
+            while (true) {
+                DatagramPacket reply = new DatagramPacket(buffer, buffer.length);
+                try {
+                    socket.receive(reply);
+                } catch (SocketTimeoutException e) {
+                    break;
+                }
+                String host = reply.getAddress().getHostAddress();
+                if (host != null && !host.startsWith("0.")) {
+                    return host;
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (socket != null) {
+                socket.close();
+            }
+        }
+        return null;
+    }
+
+    /** 车机自己的 IPv4（带网卡名），排查网段用 */
+    public static String describeLocalAddresses() {
+        StringBuilder sb = new StringBuilder();
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) {
+                    continue;
+                }
+                for (InetAddress addr : Collections.list(ni.getInetAddresses())) {
+                    String ip = addr.getHostAddress();
+                    if (ip == null || ip.indexOf(58) >= 0) {
+                        continue;
+                    }
+                    int pct = ip.indexOf(37);
+                    if (pct > 0) {
+                        ip = ip.substring(0, pct);
+                    }
+                    if (ip.startsWith("0.") || "127.0.0.1".equals(ip)) {
+                        continue;
+                    }
+                    sb.append(ni.getName()).append("  ").append(ip).append('\n');
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return sb.toString().trim();
+    }
 
     public interface Listener {
         void onState(String state);

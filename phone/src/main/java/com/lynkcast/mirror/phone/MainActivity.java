@@ -12,11 +12,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Collections;
-
 public class MainActivity extends Activity {
 
     private static final int REQ_CAPTURE = 1001;
@@ -46,9 +41,7 @@ public class MainActivity extends Activity {
         btnStart = findViewById(R.id.btn_start);
         btnStop = findViewById(R.id.btn_stop);
 
-        MirrorService.localIp = findIpv4();
-        tvIp.setText("本机地址：" + (MirrorService.localIp.isEmpty() ? "未连接网络" : MirrorService.localIp)
-                + ":" + StreamServer.PORT);
+        refreshAddresses();
 
         btnStart.setOnClickListener(v -> requestCapture());
         btnStop.setOnClickListener(v -> {
@@ -64,9 +57,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        MirrorService.localIp = findIpv4();
-        tvIp.setText("本机地址：" + (MirrorService.localIp.isEmpty() ? "未连接网络" : MirrorService.localIp)
-                + ":" + StreamServer.PORT);
+        refreshAddresses();
         handler.post(refresher);
     }
 
@@ -74,6 +65,30 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(refresher);
+    }
+
+    /**
+     * 把本机所有 IPv4 都列出来。
+     * 手机同时连着 Wi-Fi 又开热点时会有两个地址，让用户/车机自己看哪个对，
+     * 不再由 App 猜一个。
+     */
+    private void refreshAddresses() {
+        String all = StreamServer.describeAddresses();
+        if (all.isEmpty()) {
+            tvIp.setText("本机地址：未发现可用网络");
+            MirrorService.localIp = "";
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("本机地址（车机端点“自动查找”即可，不用手输）\n");
+        sb.append(all);
+        sb.append("\n\n端口 ").append(StreamServer.PORT);
+        sb.append("　发现端口 ").append(StreamServer.DISCOVERY_PORT);
+        tvIp.setText(sb.toString());
+
+        String first = all.split("\n")[0];
+        int idx = first.lastIndexOf("  ");
+        MirrorService.localIp = idx >= 0 ? first.substring(idx + 2).trim() : first.trim();
     }
 
     private void requestCapture() {
@@ -111,38 +126,5 @@ public class MainActivity extends Activity {
             startService(intent);
         }
         Toast.makeText(this, "已开始投屏，可切到车机连接", Toast.LENGTH_SHORT).show();
-    }
-
-    /** 找本机一个可用 IPv4，优先 192.168 网段（手机热点） */
-    private String findIpv4() {
-        String fallback = "";
-        try {
-            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (!ni.isUp() || ni.isLoopback()) {
-                    continue;
-                }
-                for (InetAddress addr : Collections.list(ni.getInetAddresses())) {
-                    if (!(addr instanceof Inet4Address) || addr.isLoopbackAddress()) {
-                        continue;
-                    }
-                    String ip = addr.getHostAddress();
-                    if (ip == null) {
-                        continue;
-                    }
-                    int pct = ip.indexOf('%');
-                    if (pct > 0) {
-                        ip = ip.substring(0, pct);
-                    }
-                    if (ip.startsWith("192.168.")) {
-                        return ip;
-                    }
-                    if (fallback.isEmpty()) {
-                        fallback = ip;
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        return fallback;
     }
 }

@@ -24,7 +24,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private LinearLayout panel;
     private EditText etIp;
     private Button btnConnect;
+    private Button btnFind;
     private TextView tvState;
+    private TextView tvLocal;
 
     private MirrorClient client;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -50,7 +52,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         panel = findViewById(R.id.panel);
         etIp = findViewById(R.id.et_ip);
         btnConnect = findViewById(R.id.btn_connect);
+        btnFind = findViewById(R.id.btn_find);
         tvState = findViewById(R.id.tv_state);
+        tvLocal = findViewById(R.id.tv_local);
 
         surfaceView.getHolder().addCallback(this);
 
@@ -63,6 +67,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         client = new MirrorClient();
 
         btnConnect.setOnClickListener(v -> toggleConnect());
+        btnFind.setOnClickListener(v -> doDiscover());
+
+        String local = MirrorClient.describeLocalAddresses();
+        tvLocal.setText(local.isEmpty()
+                ? "车机未联网，先连手机热点"
+                : "车机 " + local.replace("\n", " / "));
 
         root.setOnClickListener(v -> {
             if (panel.getVisibility() == View.VISIBLE) {
@@ -80,6 +90,41 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             client.stop();
         }
         super.onDestroy();
+    }
+
+    /** 局域网广播找手机，找到直接连 */
+    private void doDiscover() {
+        if (client.isRunning()) {
+            return;
+        }
+        btnFind.setEnabled(false);
+        tvState.setText("正在局域网内查找手机…");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final String host = MirrorClient.discover(2500);
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        btnFind.setEnabled(true);
+                        if (host == null) {
+                            tvState.setText("没找到手机：确认车机连的是手机热点，且手机端已点开始投屏");
+                            return;
+                        }
+                        etIp.setText(host);
+                        getSharedPreferences(PREF, MODE_PRIVATE).edit()
+                                .putString("last_ip", host).apply();
+                        if (!surfaceReady) {
+                            pendingHost = host;
+                            tvState.setText("找到手机 " + host + "，等待画面就绪…");
+                            return;
+                        }
+                        tvState.setText("找到手机 " + host + "，连接中…");
+                        startClient(host);
+                    }
+                });
+            }
+        }, "cm-discover").start();
     }
 
     private void toggleConnect() {

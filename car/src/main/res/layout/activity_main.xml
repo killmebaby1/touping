@@ -16,47 +16,78 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="#CC101216"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:background="#CC101216">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="手机地址"
-            android:textColor="#AAAAAA"
-            android:textSize="16sp"
-            android:layout_marginEnd="10dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <EditText
-            android:id="@+id/et_ip"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:hint="192.168.43.1"
-            android:textColorHint="#666666"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:inputType="text"
-            android:singleLine="true" />
+            <TextView
+                android:id="@+id/tv_local"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#8892A0"
+                android:textSize="14sp"
+                android:text="车机地址检测中…" />
 
-        <Button
-            android:id="@+id/btn_connect"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="12dp"
-            android:text="@string/btn_connect"
-            android:textSize="17sp" />
+            <TextView
+                android:id="@+id/tv_state"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:textColor="#FFD066"
+                android:textSize="16sp"
+                android:text="未连接" />
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/tv_state"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:textColor="#FFD066"
-            android:textSize="16sp"
-            android:text="未连接" />
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="手机地址"
+                android:textColor="#AAAAAA"
+                android:textSize="16sp"
+                android:layout_marginEnd="10dp" />
+
+            <EditText
+                android:id="@+id/et_ip"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:hint="192.168.43.1"
+                android:textColorHint="#666666"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <Button
+                android:id="@+id/btn_find"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginStart="12dp"
+                android:text="@string/btn_find"
+                android:textSize="17sp" />
+
+            <Button
+                android:id="@+id/btn_connect"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginStart="10dp"
+                android:text="@string/btn_connect"
+                android:textSize="17sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <TextView
@@ -66,7 +97,8 @@
         android:layout_gravity="center"
         android:textColor="#8892A0"
         android:textSize="18sp"
+        android:lineSpacingExtra="6dp"
         android:gravity="center"
-        android:text="输入手机屏幕上显示的地址，点连接\n\n建议先让手机开热点，车机连到该热点" />
+        android:text="手机开热点，车机连上这个热点\n然后在手机上点“开始投屏”，回到这里点“自动查找”\n\n找不到再手动填手机端 ap 那一行的地址" />
 
 </FrameLayout>
