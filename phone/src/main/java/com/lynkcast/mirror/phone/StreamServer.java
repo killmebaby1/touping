@@ -57,6 +57,14 @@ public class StreamServer {
 
     public volatile Runnable onClientConnected;
     public volatile Runnable onNeedKeyFrame;
+    /** 车机主动断开时回调，用来在无客户端一段时间后收摊（并恢复手机亮度/音量） */
+    public volatile Runnable onClientDisconnected;
+
+    /** 当前是否还有车机连着 */
+    public boolean hasClient() {
+        ClientHandler h = client;
+        return h != null && h.active;
+    }
 
     public String getState() {
         return state;
@@ -325,6 +333,13 @@ public class StreamServer {
                 }
                 if (client == this) {
                     state = "车机已断开，等待重连";
+                    Runnable hook = onClientDisconnected;
+                    if (hook != null) {
+                        try {
+                            hook.run();
+                        } catch (Exception ignored) {
+                        }
+                    }
                 }
             }
         }

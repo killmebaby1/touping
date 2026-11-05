@@ -77,6 +77,12 @@ public class MirrorService extends Service {
     private AudioStream audioStream;
     private Thread encodeThread;
 
+    /** 画质档位换算出的实际码率/帧率。0=流畅 1=标准 2=高清 */
+    private int bitrateNow = BITRATE;
+    private int frameNow = FRAME_RATE;
+    private Handler connHandler;
+    private Runnable connTask;
+
     private volatile boolean active;
     private volatile boolean stopping;
     private volatile boolean pendingFormatChange;
@@ -116,6 +122,9 @@ public class MirrorService extends Service {
     @Override
     public void onDestroy() {
         stopMirror();
+        // 兜底：进程被系统收掉时也要把亮度/音量还回去
+        restorePhoneVolume();
+        restoreBrightness();
         super.onDestroy();
     }
 
@@ -157,6 +166,7 @@ public class MirrorService extends Service {
         if (active || data == null) {
             return;
         }
+        applyQuality();
         statusText = "正在启动…";
 
         MediaProjectionManager mpm =
@@ -194,8 +204,9 @@ public class MirrorService extends Service {
                     inputSurface, null, null);
 
             server = new StreamServer();
-            server.onClientConnected = this::requestKeyFrame;
+            server.onClientConnected = this::onClientOnline;
             server.onNeedKeyFrame = this::requestKeyFrame;
+            server.onClientDisconnected = this::onClientOffline;
             server.start();
             server.publishVideoInfo(encW, encH, null, null);
 
@@ -294,11 +305,19 @@ public class MirrorService extends Service {
                 dimHandler.removeCallbacks(dimTask);
                 dimTask = null;
             }
-            if (savedBrightness < 0) {
-                return;
-            }
             if (Build.VERSION.SDK_INT < 23
                     || !android.provider.Settings.System.canWrite(this)) {
+                return;
+            }
+            if (savedBrightness < 0) {
+                // 没记到原值，但如果现在被压在最暗档，说明确实改过，恢复到一个能看清的亮度
+                int cur = android.provider.Settings.System.getInt(
+                        getContentResolver(),
+                        android.provider.Settings.System.SCREEN_BRIGHTNESS, 128);
+                if (cur <= 1) {
+                    android.provider.Settings.System.putInt(getContentResolver(),
+                            android.provider.Settings.System.SCREEN_BRIGHTNESS, 128);
+                }
                 return;
             }
             android.content.ContentResolver cr = getContentResolver();
@@ -356,11 +375,11 @@ public class MirrorService extends Service {
         // 依次尝试：60fps + High profile（最清晰）→ 60fps + 默认 profile → 30fps。
         // 任何一级失败都往下退，保证投屏一定能起来。
         try {
-            return createEncoderAt(w, h, FRAME_RATE, true);
+            return createEncoderAt(w, h, frameNow, true);
         } catch (Exception ignored) {
         }
         try {
-            return createEncoderAt(w, h, FRAME_RATE, false);
+            return createEncoderAt(w, h, frameNow, false);
         } catch (Exception ignored) {
         }
         return createEncoderAt(w, h, 30, false);
@@ -371,7 +390,7 @@ public class MirrorService extends Service {
                 MediaFormat.MIMETYPE_VIDEO_AVC, w, h);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        format.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, bitrateNow);
         format.setInteger(MediaFormat.KEY_FRAME_RATE, fps);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         if (Build.VERSION.SDK_INT >= 23) {
@@ -609,11 +628,70 @@ public class MirrorService extends Service {
         return Math.max(1, v / 16) * 16;
     }
 
+    /**
+     * 画质档位：车机热点与手机热点的带宽差别很大，所以留一个用户能自己切的旋钮。
+     * 0=流畅（30fps/12Mbps，带宽紧张时用）
+     * 1=标准（60fps/20Mbps，默认）
+     * 2=高清（60fps/30Mbps，链路很稳时用，车机热点上可能卡）
+     */
+    private void applyQuality() {
+        android.content.SharedPreferences sp =
+                getSharedPreferences("carmirror_phone", MODE_PRIVATE);
+        int q = sp.getInt("quality", 1);
+        if (q == 0) {
+            bitrateNow = 12 * 1024 * 1024;
+            frameNow = 30;
+        } else if (q == 2) {
+            bitrateNow = 30 * 1024 * 1024;
+            frameNow = 60;
+        } else {
+            bitrateNow = 20 * 1024 * 1024;
+            frameNow = 60;
+        }
+    }
+
+    private void onClientOnline() {
+        requestKeyFrame();
+        if (connHandler != null && connTask != null) {
+            connHandler.removeCallbacks(connTask);
+            connTask = null;
+        }
+    }
+
+    /**
+     * 车机那边断开连接后，手机端再放 8 秒；期间没重连就把投屏收掉，
+     * 顺便把亮度和音量恢复——否则人已经下车了，手机还黑着屏在录屏。
+     */
+    private void onClientOffline() {
+        if (connHandler == null) {
+            connHandler = new Handler(Looper.getMainLooper());
+        }
+        if (connTask != null) {
+            connHandler.removeCallbacks(connTask);
+        }
+        connTask = new Runnable() {
+            @Override
+            public void run() {
+                connTask = null;
+                StreamServer s = server;
+                if (active && s != null && !s.hasClient()) {
+                    statusText = "车机已断开，已停止投屏";
+                    stopMirror();
+                }
+            }
+        };
+        connHandler.postDelayed(connTask, 8000);
+    }
+
     private void stopMirror() {
         if (stopping) {
             return;
         }
         stopping = true;
+        if (connHandler != null && connTask != null) {
+            connHandler.removeCallbacks(connTask);
+            connTask = null;
+        }
         restorePhoneVolume();
         restoreBrightness();
         active = false;

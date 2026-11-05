@@ -24,6 +24,8 @@ public class MainActivity extends Activity {
     private Button btnStop;
     private Button btnDim;
     private Button btnUpdate;
+    private Button btnQuality;
+    private int quality = 1;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable refresher = new Runnable() {
@@ -45,6 +47,7 @@ public class MainActivity extends Activity {
         btnStop = findViewById(R.id.btn_stop);
         btnDim = findViewById(R.id.btn_dim);
         btnUpdate = findViewById(R.id.btn_update);
+        btnQuality = findViewById(R.id.btn_quality);
 
         refreshAddresses();
 
@@ -58,9 +61,25 @@ public class MainActivity extends Activity {
 
         btnDim.setOnClickListener(v -> toggleDim());
         btnUpdate.setOnClickListener(v -> checkUpdate());
+        quality = getSharedPreferences("carmirror_phone", MODE_PRIVATE).getInt("quality", 1);
+        updateQualityLabel();
+        btnQuality.setOnClickListener(v -> toggleQuality());
         updateDimLabel();
 
         requestNotificationPermission();
+    }
+
+    private void toggleQuality() {
+        quality = (quality + 1) % 3;
+        getSharedPreferences("carmirror_phone", MODE_PRIVATE).edit()
+                .putInt("quality", quality).apply();
+        updateQualityLabel();
+        Toast.makeText(this, "画质将在下次开始投屏时生效", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateQualityLabel() {
+        String[] names = {"流畅（省带宽）", "标准", "高清（更清晰，可能更卡）"};
+        btnQuality.setText("画质：" + names[quality]);
     }
 
     private void checkUpdate() {
