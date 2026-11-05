@@ -46,13 +46,19 @@ public class MirrorService extends Service {
     private static final int NOTIF_ID = 0x1001;
     private static final String CHANNEL_ID = "carmirror_mirror";
 
-    private static final int BITRATE = 8 * 1024 * 1024;
-    private static final int FRAME_RATE = 30;
+    /** 游戏画面运动量大，8Mbps 会糊成一片、快动时像拖影；拉到 24Mbps 让块效应消失 */
+    private static final int BITRATE = 24 * 1024 * 1024;
+    /** 30fps 在车机上看着有拖影感，提到 60fps */
+    private static final int FRAME_RATE = 60;
     private static final int MAX_LONG_SIDE = 1920;
     /** MediaFormat 里 color-standard 的 BT.709 取值 */
     private static final int COLOR_STANDARD_BT709 = 1;
-    /** MediaFormat 里 color-range 的 full（0-255）取值 */
-    private static final int COLOR_RANGE_FULL = 1;
+    /**
+     * MediaFormat 里 color-range 的 limited（16-235）取值。
+     * 硬件编码器从 Surface 取帧后普遍输出 limited range 的 YUV，
+     * 之前按 full 标注反而让车机把 16-235 拉成 0-255，暗部死黑、亮部溢出——这就是"颜色不正"。
+     */
+    private static final int COLOR_RANGE_LIMITED = 2;
 
     private MediaProjection projection;
     private volatile MediaCodec codec;
@@ -209,22 +215,32 @@ public class MirrorService extends Service {
     }
 
     private MediaCodec createEncoder(int w, int h) throws Exception {
+        try {
+            return createEncoderAt(w, h, FRAME_RATE);
+        } catch (Exception first) {
+            // 个别机型的编码器不接受 60fps，退回 30fps：画质降一档，但不能连投屏都起不来
+            return createEncoderAt(w, h, 30);
+        }
+    }
+
+    private MediaCodec createEncoderAt(int w, int h, int fps) throws Exception {
         MediaFormat format = MediaFormat.createVideoFormat(
                 MediaFormat.MIMETYPE_VIDEO_AVC, w, h);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         format.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
-        format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, fps);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         if (Build.VERSION.SDK_INT >= 23) {
             format.setInteger(MediaFormat.KEY_BITRATE_MODE,
                     MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
         }
-        // 手机屏幕是 full range sRGB，按 BT.709 + full range 标注并让编码器写进 VUI，
-        // 否则车机解码端容易按 BT.601 limited 解释，画面显得发灰发淡。
+        // 编码器从 Surface 取帧后输出的是 limited range 的 YUV（16-235）。
+        // 早先按 full 标注，车机就把 16-235 当 0-255 显示，暗部压死、高光溢出，
+        // 这才是"颜色不正"的直接原因；改成 limited + BT.709 与编码器实际输出一致。
         if (Build.VERSION.SDK_INT >= 24) {
             format.setInteger(MediaFormat.KEY_COLOR_STANDARD, COLOR_STANDARD_BT709);
-            format.setInteger(MediaFormat.KEY_COLOR_RANGE, COLOR_RANGE_FULL);
+            format.setInteger(MediaFormat.KEY_COLOR_RANGE, COLOR_RANGE_LIMITED);
         }
         MediaCodec c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);

@@ -166,6 +166,7 @@ public class MirrorClient {
             codec = createDecoder(width, height, csd0, csd1, surface);
 
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            long startNs = System.nanoTime();
             long pts = 0;
             boolean firstFrame = true;
 
@@ -221,8 +222,9 @@ public class MirrorClient {
                         buffer.clear();
                         buffer.put(data);
                         int bufferFlags = (flags == 1) ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0;
+                        // pts 用真实到达时刻，避免写死步长与实际帧率错位（帧率提到 60 后尤其明显）
+                        pts = (System.nanoTime() - startNs) / 1000;
                         codec.queueInputBuffer(inputIndex, 0, data.length, pts, bufferFlags);
-                        pts += 33333;
                     }
                 }
 
@@ -282,7 +284,9 @@ private static MediaCodec createDecoder(int width, int height,
         while (true) {
             int outIndex = codec.dequeueOutputBuffer(info, 0);
             if (outIndex >= 0) {
-                boolean doRender = info.size > 0;
+                // 解码到 Surface 时 size 常常是 0，用 size>0 判断会把帧丢掉，
+                // 表现就是画面跳帧、快动时像拖影。只要不是流结束就渲染。
+                boolean doRender = (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0;
                 codec.releaseOutputBuffer(outIndex, doRender);
                 rendered |= doRender;
             } else if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
