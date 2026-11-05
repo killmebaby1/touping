@@ -10,13 +10,28 @@ android {
         applicationId 'com.lynkcast.mirror.phone'
         minSdk 21
         targetSdk 34
-        versionCode 3
-        versionName "1.0.2"
+        versionCode 4
+        versionName "1.0.3"
+    }
+
+    // 固定签名：CI 每次都是全新机器，用自动生成的 debug 密钥会让每次包的签名都不一样，
+    // 只能卸载再装。这里改用仓库内固定的 keystore，保证任何一次构建都能覆盖升级。
+    signingConfigs {
+        fixed {
+            storeFile file('../keystore/carmirror.jks')
+            storePassword 'carmirror123'
+            keyAlias 'carmirror'
+            keyPassword 'carmirror123'
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.fixed
+        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.fixed
         }
     }
 
