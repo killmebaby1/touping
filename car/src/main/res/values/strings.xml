@@ -4,6 +4,13 @@
     <string name="btn_find">自动查找</string>
     <string name="btn_connect">连接</string>
     <string name="btn_disconnect">断开</string>
-    <string name="btn_fill_on">铺满</string>
-    <string name="btn_fill_off">原比例</string>
+    <string name="btn_fit_crop">裁剪填满</string>
+    <string name="btn_fit_stretch">拉伸铺满</string>
+    <string name="btn_fit_original">原比例</string>
+    <string name="btn_update">检查更新</string>
+    <string name="update_title">发现新版本</string>
+    <string name="update_download">下载并安装</string>
+    <string name="update_later">稍后</string>
+    <string name="update_latest">已是最新版本</string>
+    <string name="update_failed">检查更新失败，请确认车机能上网</string>
 </resources>

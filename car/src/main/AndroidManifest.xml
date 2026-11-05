@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -23,6 +24,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
+        <!-- 在线更新：把下载好的 update.apk 以 content:// 交给系统安装器 -->
+    <provider
+        android:name=".UpdateFileProvider"
+        android:authorities="com.lynkcast.mirror.car.updatefile"
+        android:exported="true"
+        android:grantUriPermissions="true" /></application>
 
 </manifest>

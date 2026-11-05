@@ -10,8 +10,8 @@ android {
         applicationId 'com.lynkcast.mirror.phone'
         minSdk 21
         targetSdk 34
-        versionCode 5
-        versionName "1.0.4"
+        versionCode 6
+        versionName "1.0.5"
     }
 
     // 固定签名：CI 每次都是全新机器，用自动生成的 debug 密钥会让每次包的签名都不一样，
