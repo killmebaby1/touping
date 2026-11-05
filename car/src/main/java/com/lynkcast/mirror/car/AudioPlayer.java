@@ -30,6 +30,11 @@ public class AudioPlayer {
     private Thread thread;
     private volatile AudioTrack track;
 
+    /** 用于判断播放积压：累计写入的 PCM 帧数 vs 声卡已播到的位置 */
+    private long writtenFrames;
+    private int sampleRateHz = 44100;
+    private int channelCount = 2;
+
     public void connect(final String host) {
         if (running) {
             return;
@@ -98,14 +103,17 @@ public class AudioPlayer {
             int channelConfig = channels == 1
                     ? AudioFormat.CHANNEL_OUT_MONO
                     : AudioFormat.CHANNEL_OUT_STEREO;
+            sampleRateHz = sampleRate;
+            channelCount = channels;
             int minBuf = AudioTrack.getMinBufferSize(sampleRate, channelConfig,
                     AudioFormat.ENCODING_PCM_16BIT);
             if (minBuf <= 0) {
                 minBuf = 4096;
             }
+            // 缓冲区只留两倍最小量：原来放大到四倍，本身就要多攒 200ms 以上才出声
             AudioTrack t = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate,
                     channelConfig, AudioFormat.ENCODING_PCM_16BIT,
-                    Math.max(minBuf * 4, 8192), AudioTrack.MODE_STREAM);
+                    minBuf * 2, AudioTrack.MODE_STREAM);
             t.play();
             track = t;
 
@@ -176,6 +184,7 @@ public class AudioPlayer {
                     out.limit(info.offset + info.size);
                     try {
                         t.write(out, info.size, AudioTrack.WRITE_BLOCKING);
+                        writtenFrames += info.size / (2 * channelCount);
                     } catch (Exception ignored) {
                     }
                 }
@@ -185,6 +194,18 @@ public class AudioPlayer {
             } else {
                 break;
             }
+        }
+        // 关键：一旦播放积压超过三分之一秒，说明声音已经拖在画面后面了，
+        // 清空缓冲从头跟上，宁可丢一小段也不要一直越拖越远。
+        try {
+            long played = t.getPlaybackHeadPosition() & 0xFFFFFFFFL;
+            if (writtenFrames - played > sampleRateHz / 3) {
+                t.pause();
+                t.flush();
+                t.play();
+                writtenFrames = 0;
+            }
+        } catch (Exception ignored) {
         }
     }
 }

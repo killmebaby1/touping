@@ -69,6 +69,14 @@
             android:text="@string/btn_stop"
             android:textSize="20sp" />
 
+        <Button
+            android:id="@+id/btn_dim"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/btn_dim_off"
+            android:textSize="20sp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -77,7 +85,7 @@
             android:textColor="#5A6270"
             android:textSize="13sp"
             android:lineSpacingExtra="4dp"
-            android:text="提示：投屏期间请保持手机屏幕点亮；锁屏后画面会中断。\n荣耀手机每次重启后首次投屏需重新授权一次。" />
+            android:text="提示：投屏期间手机屏幕必须点亮——锁屏或按电源键息屏后，系统会停止屏幕合成，车机画面会黑掉。想省电可以把亮度压到最低（上面的“暗屏省电”）。\n荣耀手机每次重启后首次投屏需重新授权一次。" />
 
     </LinearLayout>
 

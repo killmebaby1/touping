@@ -22,6 +22,7 @@ public class MainActivity extends Activity {
     private TextView tvStatus;
     private Button btnStart;
     private Button btnStop;
+    private Button btnDim;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable refresher = new Runnable() {
@@ -41,6 +42,7 @@ public class MainActivity extends Activity {
         tvStatus = findViewById(R.id.tv_status);
         btnStart = findViewById(R.id.btn_start);
         btnStop = findViewById(R.id.btn_stop);
+        btnDim = findViewById(R.id.btn_dim);
 
         refreshAddresses();
 
@@ -52,7 +54,40 @@ public class MainActivity extends Activity {
             tvStatus.setText("已停止");
         });
 
+        btnDim.setOnClickListener(v -> toggleDim());
+        updateDimLabel();
+
         requestNotificationPermission();
+    }
+
+    private void updateDimLabel() {
+        boolean on = getSharedPreferences("carmirror_phone", MODE_PRIVATE)
+                .getBoolean("dim_on", false);
+        btnDim.setText(on ? R.string.btn_dim_on : R.string.btn_dim_off);
+    }
+
+    /** 暗屏省电开关：开启后每次投屏自动把亮度压到最低，停止投屏时恢复 */
+    private void toggleDim() {
+        if (Build.VERSION.SDK_INT >= 23
+                && !android.provider.Settings.System.canWrite(this)) {
+            try {
+                startActivity(new Intent(
+                        android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                        android.net.Uri.parse("package:" + getPackageName())));
+                Toast.makeText(this, "请允许“修改系统设置”，再回来开启暗屏", Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "请到系统设置里允许本应用“修改系统设置”", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            boolean on = !getSharedPreferences("carmirror_phone", MODE_PRIVATE)
+                    .getBoolean("dim_on", false);
+            getSharedPreferences("carmirror_phone", MODE_PRIVATE)
+                    .edit().putBoolean("dim_on", on).apply();
+            updateDimLabel();
+            Toast.makeText(this, on ? "已开启：投屏时手机自动压到最暗" : "已关闭暗屏",
+                    Toast.LENGTH_SHORT).show();
+        }
+        updateDimLabel();
     }
 
     @Override

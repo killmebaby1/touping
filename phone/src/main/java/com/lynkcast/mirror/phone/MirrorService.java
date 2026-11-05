@@ -47,7 +47,7 @@ public class MirrorService extends Service {
     private static final String CHANNEL_ID = "carmirror_mirror";
 
     /** 游戏画面运动量大，8Mbps 会糊成一片、快动时像拖影；拉到 24Mbps 让块效应消失 */
-    private static final int BITRATE = 24 * 1024 * 1024;
+    private static final int BITRATE = 28 * 1024 * 1024;
     /** 30fps 在车机上看着有拖影感，提到 60fps */
     private static final int FRAME_RATE = 60;
     private static final int MAX_LONG_SIDE = 1920;
@@ -59,6 +59,13 @@ public class MirrorService extends Service {
      * 之前按 full 标注反而让车机把 16-235 拉成 0-255，暗部死黑、亮部溢出——这就是"颜色不正"。
      */
     private static final int COLOR_RANGE_LIMITED = 2;
+
+    /** 投屏前用户原本的媒体音量，停止投屏时原样还回去 */
+    private int savedMusicVolume = -1;
+
+    /** 暗屏省电：投屏前记录的亮度与亮度模式，停止时恢复 */
+    private int savedBrightness = -1;
+    private int savedBrightnessMode = -1;
 
     private MediaProjection projection;
     private volatile MediaCodec codec;
@@ -199,7 +206,9 @@ public class MirrorService extends Service {
             encodeThread = new Thread(this::encodeLoop, "cm-encode");
             encodeThread.start();
 
-            statusText = "投屏中 · 等待车机连接";
+            lowerPhoneVolume();
+            applyDimIfEnabled();
+            statusText = "投屏中 · 声音走车机，手机音量已压到最低";
         } catch (Exception e) {
             statusText = "编码器启动失败：" + e;
             stopMirror();
@@ -214,16 +223,114 @@ public class MirrorService extends Service {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    private MediaCodec createEncoder(int w, int h) throws Exception {
+    /**
+     * 暗屏省电：把系统亮度压到最低。
+     * 注意这只是"极暗"，不是真正息屏——真正息屏会让系统停止屏幕合成，
+     * 采集端拿到的就是黑帧，车机画面会断。极暗状态下合成仍在继续，画面正常。
+     */
+    private void applyDimIfEnabled() {
         try {
-            return createEncoderAt(w, h, FRAME_RATE);
-        } catch (Exception first) {
-            // 个别机型的编码器不接受 60fps，退回 30fps：画质降一档，但不能连投屏都起不来
-            return createEncoderAt(w, h, 30);
+            if (Build.VERSION.SDK_INT < 23) {
+                return;
+            }
+            if (!android.provider.Settings.System.canWrite(this)) {
+                return;
+            }
+            android.content.SharedPreferences sp =
+                    getSharedPreferences("carmirror_phone", MODE_PRIVATE);
+            if (!sp.getBoolean("dim_on", false)) {
+                return;
+            }
+            android.content.ContentResolver cr = getContentResolver();
+            if (savedBrightness < 0) {
+                savedBrightness = android.provider.Settings.System.getInt(
+                        cr, android.provider.Settings.System.SCREEN_BRIGHTNESS, 128);
+                savedBrightnessMode = android.provider.Settings.System.getInt(
+                        cr, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, 0);
+            }
+            android.provider.Settings.System.putInt(cr,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, 0);
+            android.provider.Settings.System.putInt(cr,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, 1);
+        } catch (Throwable ignored) {
         }
     }
 
-    private MediaCodec createEncoderAt(int w, int h, int fps) throws Exception {
+    private void restoreBrightness() {
+        try {
+            if (savedBrightness < 0) {
+                return;
+            }
+            if (Build.VERSION.SDK_INT < 23
+                    || !android.provider.Settings.System.canWrite(this)) {
+                return;
+            }
+            android.content.ContentResolver cr = getContentResolver();
+            android.provider.Settings.System.putInt(cr,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, savedBrightness);
+            if (savedBrightnessMode >= 0) {
+                android.provider.Settings.System.putInt(cr,
+                        android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                        savedBrightnessMode);
+            }
+            savedBrightness = -1;
+            savedBrightnessMode = -1;
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * 投屏期间把手机外放压到很低的档位。
+     * 不能直接设 0：内录抓的是播放混音，音量归零会把采集信号也一起消掉。
+     * 压到最大音量的 1/4 左右，兜里基本听不见，采集仍然有信号。
+     */
+    private void lowerPhoneVolume() {
+        try {
+            android.media.AudioManager am =
+                    (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) {
+                return;
+            }
+            if (savedMusicVolume < 0) {
+                savedMusicVolume = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC);
+            }
+            int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+            int target = Math.max(1, max / 4);
+            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                    Math.min(target, Math.max(1, savedMusicVolume)), 0);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void restorePhoneVolume() {
+        try {
+            if (savedMusicVolume >= 0) {
+                android.media.AudioManager am =
+                        (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, savedMusicVolume, 0);
+                }
+                savedMusicVolume = -1;
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private MediaCodec createEncoder(int w, int h) throws Exception {
+        // 依次尝试：60fps + High profile（最清晰）→ 60fps + 默认 profile → 30fps。
+        // 任何一级失败都往下退，保证投屏一定能起来。
+        try {
+            return createEncoderAt(w, h, FRAME_RATE, true);
+        } catch (Exception ignored) {
+        }
+        try {
+            return createEncoderAt(w, h, FRAME_RATE, false);
+        } catch (Exception ignored) {
+        }
+        return createEncoderAt(w, h, 30, false);
+    }
+
+    private MediaCodec createEncoderAt(int w, int h, int fps, boolean highProfile) throws Exception {
         MediaFormat format = MediaFormat.createVideoFormat(
                 MediaFormat.MIMETYPE_VIDEO_AVC, w, h);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
@@ -241,6 +348,14 @@ public class MirrorService extends Service {
         if (Build.VERSION.SDK_INT >= 24) {
             format.setInteger(MediaFormat.KEY_COLOR_STANDARD, COLOR_STANDARD_BT709);
             format.setInteger(MediaFormat.KEY_COLOR_RANGE, COLOR_RANGE_LIMITED);
+            if (highProfile) {
+                // High profile 同码率下细节保留明显更好，色块/颗粒感会少很多；
+                // 车机 8155 硬解 High@4.2 完全够用。个别编码器不支持就由上层回退。
+                format.setInteger(MediaFormat.KEY_PROFILE,
+                        MediaCodecInfo.CodecProfileLevel.AVCProfileHigh);
+                format.setInteger(MediaFormat.KEY_LEVEL,
+                        MediaCodecInfo.CodecProfileLevel.AVCLevel42);
+            }
         }
         MediaCodec c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -463,6 +578,8 @@ public class MirrorService extends Service {
             return;
         }
         stopping = true;
+        restorePhoneVolume();
+        restoreBrightness();
         active = false;
 
         Thread t = encodeThread;

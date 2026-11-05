@@ -3,4 +3,6 @@
     <string name="app_name">车镜 · 手机端</string>
     <string name="btn_start">开始投屏</string>
     <string name="btn_stop">停止投屏</string>
+    <string name="btn_dim_off">暗屏省电：关闭</string>
+    <string name="btn_dim_on">暗屏省电：开启（投屏时自动压到最暗）</string>
 </resources>
